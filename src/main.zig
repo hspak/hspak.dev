@@ -6,6 +6,7 @@ const partials = @import("partials.zig");
 
 pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
     const allocator = &arena.allocator;
     const index_path = try fs.path.join(allocator, &[_][]const u8{ "docs", "index.html" });
 
@@ -13,10 +14,14 @@ pub fn main() anyerror!void {
     defer posts.deinit();
     try posts.writePost();
 
-    fs.cwd().deleteFile(index_path) catch |err| {};
-    const ignore = try fs.cwd().createFile(index_path, .{});
+    fs.cwd().deleteFile(index_path) catch |err| switch (err) {
+        error.FileNotFound => {},
+        else => return err,
+    };
+    _ = try fs.cwd().createFile(index_path, .{});
     var index_file = try fs.cwd().openFile(index_path, .{ .write = true });
     defer index_file.close();
+    std.debug.warn("[ ] creating main index: {s}\n", .{index_path});
     try buildIndex(posts, index_file);
 }
 

@@ -3,7 +3,7 @@ const fs = std.fs;
 
 pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
     @setEvalBranchQuota(3000);
-    const stream = output_file.outStream();
+    const stream = output_file.writer();
     const header = if (is_index) "<h1>Blog</h1>" else "<a href=\"https://hspak.dev\"><h1>Blog</h1></a>";
     return stream.print(
         \\<!doctype html>
@@ -26,13 +26,13 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
         \\  </head>
         \\  <body>
         \\    <div class="container">
-        \\      <div class="block">{}</div>
+        \\      <div class="block">{s}</div>
         \\
     , .{header});
 }
 
 pub fn writeFooter(output_file: fs.File) !void {
-    const stream = output_file.outStream();
+    const stream = output_file.writer();
     return stream.print(
         \\       <div class="block">
         \\        <div class="footer">

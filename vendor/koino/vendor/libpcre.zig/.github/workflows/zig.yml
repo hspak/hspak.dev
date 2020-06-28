@@ -1,0 +1,56 @@
+name: Zig
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+      - run: zig build
+      - run: zig build test
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+      - run: brew install pkg-config pcre
+      - run: env ZIG_SYSTEM_LINKER_HACK=1 zig build
+      - run: env ZIG_SYSTEM_LINKER_HACK=1 zig build test
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+      - run: c:; cd \vcpkg; git pull; .\bootstrap-vcpkg.bat
+      - run: vcpkg integrate install
+      - run: vcpkg install pcre --triplet x64-windows-static
+      - run: zig build -Dtarget=x86_64-windows-msvc
+      - run: zig build -Dtarget=x86_64-windows-msvc test
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+      - run: zig fmt --check build.zig src/*.zig
