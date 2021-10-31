@@ -44,7 +44,7 @@ pre {
   display: flex;
   flex-direction: column;
   align-self: center;
-  width: 720px;
+  max-width: 720px;
 }
 
 .date {
