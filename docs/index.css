@@ -1,3 +1,19 @@
+:root {
+  --set-width: 720px;
+}
+
+body {
+  background: #333;
+  color: #ddd;
+}
+a {
+  text-decoration: none;
+  color: #e0ccb8;
+}
+a:hover {
+  color: #c96;
+}
+
 .container, html, body {
   height: 100%;
   margin: 0;
@@ -22,7 +38,11 @@ blockquote {
 
 pre {
   /* TODO: update */
-  background: #777;
+  background: #494949;
+  color: #fff;
+  padding: 1em;
+  border-radius: 8px;
+  margin-left: 2em;
 }
 
 .indexHeader {
@@ -38,6 +58,7 @@ pre {
 .outer {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
 }
 
 .container {
@@ -50,7 +71,7 @@ pre {
 .block {
   display: flex;
   flex-direction: column;
-  max-width: 720px;
+  max-width: var(--set-width);
   padding: 0.25em;
 }
 
@@ -75,44 +96,6 @@ pre {
   padding-top: 0.75em;
 }
 
-/* TODO: Introduce a manual toggle for this */
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #333;
-    color: #ddd;
-  }
-  a {
-    text-decoration: none;
-    color: #e0ccb8;
-  }
-  a:hover {
-    color: #c96;
-  }
-}
-
-@media (prefers-color-scheme: light) {
-  body {
-    background: #333;
-    color: #ddd;
-  }
-  a {
-    text-decoration: none;
-    color: #da7;
-  }
-  a:hover {
-    color: #c96;
-  }
-  /*
-  body {
-    background: #fff;
-    color: #333;
-  }
-  a {
-    text-decoration: none;
-    color: #333;
-  }
-  a:hover {
-    color: #369;
-  }
-  */
+.fixedWidth {
+  width: calc(var(--set-width) + 8px);
 }

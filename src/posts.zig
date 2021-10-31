@@ -122,20 +122,21 @@ const Post = struct {
     }
 
     pub fn printIndexEntry(self: *Self, output_file: fs.File) !void {
-        const path = if (self.meta.draft) "draft" else "post";
-        const title = if (self.meta.draft) try std.fmt.allocPrint(self.allocator, "(DRAFT) {s}", .{self.meta.title}) else self.meta.title;
+        if (self.meta.draft) return;
+
         const stream = output_file.writer();
         try stream.print(
             \\      <div class="block">
             \\        <div class="entry">
-            \\        <a href="/{s}/{s}/">
+            \\        <a href="/post/{s}/">
             \\          <h2>{s}</h2>
             \\          <div class="date">May 19, 2020</div>
             \\          <div class="preview">{s}</div>
             \\        </a>
             \\        </div>
             \\      </div>
-        , .{ path, self.meta.name, title, self.meta.desc });
+            \\
+        , .{ self.meta.name, self.meta.title, self.meta.desc });
     }
 
     fn parsePost(self: *Self) !void {

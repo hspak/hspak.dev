@@ -6,9 +6,9 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
     const stream = output_file.writer();
     const header = if (is_index)
         \\<div class="indexHeader">
-        \\  <div class="indexBlock"><h1>Blog</h1></div>
-        \\  <div class="indexBlock"><a href="https://hspak.com/">By Hong</a></div>
-        \\</div>
+        \\        <div class="indexBlock"><h1>Blog</h1></div>
+        \\        <div class="indexBlock"><a href="https://hspak.com/">By Hong</a></div>
+        \\      </div>
     else
         \\<a href="/"><h1>Blog</h1></a>
         ;
@@ -50,12 +50,12 @@ pub fn writeFooter(output_file: fs.File, is_index: bool) !void {
         ;
     const stream = output_file.writer();
     return stream.print(
-        \\
         \\      <div class="block">
         \\        <div class="footer">
         \\          <a href="#top">To Top</a>{s}
         \\        </div>
         \\      </div>
+        \\      <div class="fixedWidth"></div>
         \\    </div>
         \\    </div>
         \\  </body>
