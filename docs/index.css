@@ -35,6 +35,11 @@ pre {
   margin-right: 0.5em;
 }
 
+.outer {
+  display: flex;
+  justify-content: center;
+}
+
 .container {
   display: flex;
   flex-direction: column;

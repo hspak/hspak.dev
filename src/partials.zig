@@ -33,6 +33,7 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
         \\    <link rel="stylesheet" href="/index.css">
         \\  </head>
         \\  <body>
+        \\    <div class="outer">
         \\    <div class="container">
         \\      <div class="block">
         \\      {s}
@@ -55,6 +56,7 @@ pub fn writeFooter(output_file: fs.File, is_index: bool) !void {
         \\          <a href="#top">To Top</a>{s}
         \\        </div>
         \\      </div>
+        \\    </div>
         \\    </div>
         \\  </body>
         \\</html>
