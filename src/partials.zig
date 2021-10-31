@@ -4,7 +4,15 @@ const fs = std.fs;
 pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
     @setEvalBranchQuota(3000);
     const stream = output_file.writer();
-    const header = if (is_index) "<h1>Blog</h1>" else "<a href=\"https://hspak.dev\"><h1>Blog</h1></a>";
+    const header = if (is_index)
+        \\<div class="indexHeader">
+        \\  <div class="indexBlock"><h1>Blog</h1></div>
+        \\  <div class="indexBlock"><a href="https://hspak.com/">By Hong</a></div>
+        \\</div>
+    else
+        \\<a href="/"><h1>Blog</h1></a>
+        ;
+
     return stream.print(
         \\<!doctype html>
         \\<html>
@@ -26,23 +34,30 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
         \\  </head>
         \\  <body>
         \\    <div class="container">
-        \\      <div class="block">{s}</div>
+        \\      <div class="block">
+        \\      {s}
+        \\      </div>
         \\
     , .{header});
 }
 
-pub fn writeFooter(output_file: fs.File) !void {
+pub fn writeFooter(output_file: fs.File, is_index: bool) !void {
+    const author = if (is_index)
+        \\
+    else
+        \\ · <a href="https://hspak.com">By Hong</a>
+        ;
     const stream = output_file.writer();
     return stream.print(
-        \\       <div class="block">
+        \\
+        \\      <div class="block">
         \\        <div class="footer">
-        \\          <a href="#top">To Top</a> ·
-        \\          <a href="https://hspak.com">By Hong</a>
+        \\          <a href="#top">To Top</a>{s}
         \\        </div>
         \\      </div>
         \\    </div>
         \\  </body>
         \\</html>
         \\
-    , .{});
+    , .{author});
 }

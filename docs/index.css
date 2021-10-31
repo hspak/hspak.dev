@@ -25,6 +25,16 @@ pre {
   background: #777;
 }
 
+.indexHeader {
+  display: flex;
+  align-items: baseline;
+}
+
+.indexBlock {
+  display: flex;
+  margin-right: 0.5em;
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -47,7 +57,7 @@ pre {
   display: flex;
   align-content: center;
   flex-direction: row;
-  padding: 0.5em 0 1.0em 0;
+  padding: 0.5em 0 1.5em 0.25em;
 }
 
 .body {
@@ -58,6 +68,7 @@ pre {
   padding-top: 28px;
 }
 
+/* TODO: Introduce a manual toggle for this */
 @media (prefers-color-scheme: dark) {
   body {
     background: #333;
@@ -65,7 +76,7 @@ pre {
   }
   a {
     text-decoration: none;
-    color: #ddd;
+    color: #e0ccb8;
   }
   a:hover {
     color: #c96;
@@ -73,6 +84,18 @@ pre {
 }
 
 @media (prefers-color-scheme: light) {
+  body {
+    background: #333;
+    color: #ddd;
+  }
+  a {
+    text-decoration: none;
+    color: #da7;
+  }
+  a:hover {
+    color: #c96;
+  }
+  /*
   body {
     background: #fff;
     color: #333;
@@ -84,4 +107,5 @@ pre {
   a:hover {
     color: #369;
   }
+  */
 }

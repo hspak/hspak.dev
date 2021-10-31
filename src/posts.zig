@@ -65,6 +65,7 @@ const Post = struct {
         name: []const u8,
         title: []const u8,
         desc: []const u8,
+        draft: bool,
     },
 
     pub fn init(allocator: *std.mem.Allocator, full_path: []const u8) !Post {
@@ -79,9 +80,9 @@ const Post = struct {
                 .name = PlaceholderText,
                 .title = PlaceholderText,
                 .desc = PlaceholderText,
+                .draft = true,
             },
         };
-        std.debug.print("post {s}\n", .{full_path});
         try post.parsePost();
         return post;
     }
@@ -91,7 +92,8 @@ const Post = struct {
     }
 
     pub fn printPost(self: *Self) !void {
-        const post_dir_path = try fs.path.join(self.allocator, &[_][]const u8{ "docs", "post", self.meta.name });
+        const postState = if (self.meta.draft) "draft" else "post";
+        const post_dir_path = try fs.path.join(self.allocator, &[_][]const u8{ "docs", postState, self.meta.name });
         const post_index_path = try fs.path.join(self.allocator, &[_][]const u8{ post_dir_path, "index.html" });
         fs.cwd().makeDir(post_dir_path) catch |err| switch (err) {
             error.PathAlreadyExists => {},
@@ -100,8 +102,10 @@ const Post = struct {
         fs.cwd().deleteFile(post_index_path) catch |err| switch (err) {
             else => {},
         };
+
+        var output_file: std.fs.File = undefined;
         std.debug.warn("[ ] creating: {s}\n", .{post_index_path});
-        var output_file = try fs.cwd().createFile(post_index_path, .{});
+        output_file = try fs.cwd().createFile(post_index_path, .{});
         defer output_file.close();
 
         try partials.writeHeader(output_file, false);
@@ -110,26 +114,28 @@ const Post = struct {
             \\      <div class="block">
             \\        <h2>{s}</h2>
             \\        <div class="date">May 19, 2020</div>
-            \\        <div class="body">{s}</div>
+            \\        <div class="body">
+            \\{s}        </div>
             \\      </div>
         , .{ self.meta.title, self.parsedHTML.toOwnedSlice() });
-        try partials.writeFooter(output_file);
+        try partials.writeFooter(output_file, false);
     }
 
     pub fn printIndexEntry(self: *Self, output_file: fs.File) !void {
+        const path = if (self.meta.draft) "draft" else "post";
+        const title = if (self.meta.draft) try std.fmt.allocPrint(self.allocator, "(DRAFT) {s}", .{self.meta.title}) else self.meta.title;
         const stream = output_file.writer();
         try stream.print(
             \\      <div class="block">
             \\        <div class="entry">
-            \\        <a href="/post/{s}/">
+            \\        <a href="/{s}/{s}/">
             \\          <h2>{s}</h2>
             \\          <div class="date">May 19, 2020</div>
             \\          <div class="preview">{s}</div>
             \\        </a>
             \\        </div>
             \\      </div>
-            \\
-        , .{ self.meta.name, self.meta.title, self.meta.desc });
+        , .{ path, self.meta.name, title, self.meta.desc });
     }
 
     fn parsePost(self: *Self) !void {
@@ -156,7 +162,8 @@ const Post = struct {
     }
 
     fn parseHeader(self: *Self, line: []const u8) !bool {
-        std.debug.warn("parseHeader {s}\n", .{line});
+        // TODO: Fix the bad index out-of-bounds error when we check for key equality.
+        // The current workaround is to order the if/else with shortest to longest...
         if (std.mem.eql(u8, line[0..3], "---")) {
             return false;
         } else if (line.len < 5) {
@@ -169,6 +176,10 @@ const Post = struct {
             var iter = std.mem.split(u8, line, ":");
             _ = iter.next().?;
             self.meta.title = try self.trimWhitespace(iter.next().?);
+        } else if (std.mem.eql(u8, line[0..6], "Draft:")) {
+            var iter = std.mem.split(u8, line, ":");
+            _ = iter.next().?;
+            self.meta.draft = if (std.mem.eql(u8, try self.trimWhitespace(iter.next().?), "false")) false else true;
         } else if (std.mem.eql(u8, line[0..12], "Description:")) {
             var iter = std.mem.split(u8, line, ":");
             _ = iter.next().?;
