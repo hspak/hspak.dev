@@ -1,7 +1,3 @@
-:root {
-  --set-width: 720px;
-}
-
 body {
   background: #333;
   color: #ddd;
@@ -71,7 +67,7 @@ pre {
 .block {
   display: flex;
   flex-direction: column;
-  max-width: var(--set-width);
+  max-width: 720px;
   padding: 0.25em;
 }
 
@@ -97,5 +93,5 @@ pre {
 }
 
 .fixedWidth {
-  width: calc(var(--set-width) + 8px);
+  width: 100%;
 }
