@@ -1,6 +1,7 @@
 const std = @import("std");
 const fs = std.fs;
 const io = std.io;
+const Atom = @import("atom.zig").Atom;
 const Posts = @import("posts.zig").Posts;
 const partials = @import("partials.zig");
 
@@ -18,6 +19,11 @@ fn buildIndex(allocator: *std.mem.Allocator) !void {
     var posts = try Posts.init(allocator, "posts");
     defer posts.deinit();
     try posts.writePost();
+
+    const feed_path = try fs.path.join(allocator, &[_][]const u8{ "docs", "feed.xml" });
+    var atom_feed = try Atom.init(allocator, feed_path);
+    try atom_feed.generate(posts);
+    defer atom_feed.deinit();
 
     fs.cwd().deleteFile(index_path) catch |err| switch (err) {
         error.FileNotFound => {},

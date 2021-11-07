@@ -1,6 +1,7 @@
 const std = @import("std");
 const fs = std.fs;
 const partials = @import("partials.zig");
+const time = @import("time.zig");
 const koino = @import("koino");
 
 const PlaceholderText = "missing!!!";
@@ -8,6 +9,7 @@ const PostError = error{
     MissingName,
     MissingTitle,
     MissingDescription,
+    MissingPosts,
 };
 
 pub const Posts = struct {
@@ -45,6 +47,20 @@ pub const Posts = struct {
         }
     }
 
+    pub fn latestUpdatedAt(self: Self) !i128 {
+        if (self.list.items.len == 0) {
+            return PostError.MissingPosts;
+        }
+
+        var latest: i128 = self.list.items[0].stat.mtime;
+        for (self.list.items) |item| {
+            if (latest < item.stat.mtime) {
+                latest = item.stat.mtime;
+            }
+        }
+        return latest;
+    }
+
     pub fn deinit(self: Self) void {
         for (self.list.items) |post| {
             post.deinit();
@@ -59,6 +75,7 @@ const Post = struct {
     allocator: *std.mem.Allocator,
     full_path: []const u8,
     file: fs.File,
+    updated_at: []const u8,
     stat: fs.File.Stat,
     parsedHTML: std.ArrayList(u8),
     meta: struct {
@@ -66,21 +83,27 @@ const Post = struct {
         title: []const u8,
         desc: []const u8,
         draft: bool,
+        created_at: []const u8,
     },
 
     pub fn init(allocator: *std.mem.Allocator, full_path: []const u8) !Post {
         var post_file = try fs.cwd().openFile(full_path, .{ .read = true });
+        const stat = try post_file.stat();
+        const updated_at = try time.formatUnixTime(allocator, stat.mtime);
+
         var post = Post{
             .allocator = allocator,
             .full_path = full_path,
             .file = post_file,
-            .stat = try post_file.stat(),
             .parsedHTML = std.ArrayList(u8).init(allocator),
+            .updated_at = updated_at,
+            .stat = stat,
             .meta = .{
                 .name = PlaceholderText,
                 .title = PlaceholderText,
                 .desc = PlaceholderText,
                 .draft = true,
+                .created_at = PlaceholderText,
             },
         };
         try post.parsePost();
@@ -109,15 +132,21 @@ const Post = struct {
         defer output_file.close();
 
         try partials.writeHeader(output_file, false);
+
+        var updated = std.ArrayList(u8).init(self.allocator);
+        if (!std.mem.eql(u8, self.meta.created_at, self.updated_at)) {
+            try updated.writer().print("(Updated at: {s})", .{self.updated_at});
+        }
         const stream = output_file.writer();
         try stream.print(
             \\      <div class="block">
             \\        <h2>{s}</h2>
-            \\        <div class="date">May 19, 2020</div>
+            \\        <div class="date">{s} {s}</div>
             \\        <div class="body">
             \\{s}        </div>
             \\      </div>
-        , .{ self.meta.title, self.parsedHTML.toOwnedSlice() });
+        , .{ self.meta.title, self.meta.created_at, updated.items, self.parsedHTML.items });
+
         try partials.writeFooter(output_file, false);
     }
 
@@ -130,13 +159,13 @@ const Post = struct {
             \\        <div class="entry">
             \\        <a href="/post/{s}/">
             \\          <h2>{s}</h2>
-            \\          <div class="date">May 19, 2020</div>
+            \\          <div class="date">{s}</div>
             \\          <div class="preview">{s}</div>
             \\        </a>
             \\        </div>
             \\      </div>
             \\
-        , .{ self.meta.name, self.meta.title, self.meta.desc });
+        , .{ self.meta.name, self.meta.title, self.meta.created_at, self.meta.desc });
     }
 
     fn parsePost(self: *Self) !void {
@@ -185,6 +214,10 @@ const Post = struct {
             var iter = std.mem.split(u8, line, ":");
             _ = iter.next().?;
             self.meta.desc = try self.trimWhitespace(iter.next().?);
+        } else if (std.mem.eql(u8, line[0..13], "Publish Date:")) {
+            var iter = std.mem.split(u8, line, ":");
+            _ = iter.next().?;
+            self.meta.created_at = try self.trimWhitespace(iter.next().?);
         }
         return true;
     }

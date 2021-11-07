@@ -2,6 +2,7 @@ Name: new-blog
 Title: New Blog
 Description: Creating yaks for me to shave or how many more blog rewrites am I going to go through?
 Draft: false
+Publish Date: Oct 31, 2021
 ---
 
 Hello world!

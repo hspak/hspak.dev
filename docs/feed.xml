@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<title>Hong's Blog</title>
+<link href="https://hspak.dev/"/>
+<updated>November 6, 2021</updated>
+<author>
+  <name>Hong Shick Pak</name>
+</author>
+<id>https://hspak.dev/atom.xml</id><entry>
+  <title>New Blog</title>
+  <published>Oct 31, 2021</published>
+  <updated>November 6, 2021</updated>
+  <link href="https://hspak.dev/post/new-blog/" type="text/html"/>
+  <id>https://hspak.dev/post/new-blog/</id>
+  <content type="html">
+    &lt;p&gt;Hello world!&lt;/p&gt;
+&lt;p&gt;This will now be my third blog re-write and each have only ever had a single
+post... The main motivation here was to write a static blog generator in
+&lt;a href=&quot;https://ziglang.org/&quot;&gt;Zig&lt;/a&gt;, mostly for learning purposes.&lt;/p&gt;
+&lt;p&gt;This was mostly blocked on me writing a markdown parser so I can make it a
+somewhat tolerable for writing blog posts. Recently I found out there's already
+a &lt;a href=&quot;https://github.com/kivikakk/koino&quot;&gt;popular markdown parser for Zig&lt;/a&gt;!&lt;/p&gt;
+&lt;p&gt;Now that this is finally shipped, hopefully more posts will follow!&lt;/p&gt;
+
+  </content></entry>
+</feed>
