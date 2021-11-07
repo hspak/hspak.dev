@@ -19,6 +19,8 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
         \\  <head>
         \\    <title>Blog: Hong Shick Pak</title>
         \\    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        \\    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+        \\    <meta name="referrer" content="strict-origin">
         \\    <meta name="author" content="Hong Shick Pak">
         \\    <meta name="viewport" content="width=device-width, initial-scale=1">
         \\    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">

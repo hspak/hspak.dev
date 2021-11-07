@@ -66,10 +66,9 @@ pub const Atom = struct {
             try stream.print("\n  <id>https://hspak.dev/post/{s}/</id>\n", .{item.meta.name});
             try stream.print(
                 \\  <content type="html">
-                \\    {s}
-                \\  </content>
+                \\    {s}  </content>
             , .{try htmlreference(self.allocator, item.parsedHTML.items)});
-            _ = try stream.write("</entry>\n");
+            _ = try stream.write("\n</entry>\n");
         }
     }
 

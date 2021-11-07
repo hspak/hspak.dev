@@ -21,6 +21,6 @@ post... The main motivation here was to write a static blog generator in
 somewhat tolerable for writing blog posts. Recently I found out there's already
 a &lt;a href=&quot;https://github.com/kivikakk/koino&quot;&gt;popular markdown parser for Zig&lt;/a&gt;!&lt;/p&gt;
 &lt;p&gt;Now that this is finally shipped, hopefully more posts will follow!&lt;/p&gt;
-
-  </content></entry>
+  </content>
+</entry>
 </feed>
