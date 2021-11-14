@@ -1,7 +1,7 @@
 const std = @import("std");
 const fs = std.fs;
 
-pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
+pub fn writeHeader(output_file: fs.File, is_index: bool, title: []const u8) !void {
     @setEvalBranchQuota(3000);
     const stream = output_file.writer();
     const header = if (is_index)
@@ -17,7 +17,7 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
         \\<!doctype html>
         \\<html>
         \\  <head>
-        \\    <title>Blog: Hong Shick Pak</title>
+        \\    <title>{s}</title>
         \\    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         \\    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
         \\    <meta name="referrer" content="strict-origin">
@@ -41,7 +41,7 @@ pub fn writeHeader(output_file: fs.File, is_index: bool) !void {
         \\      {s}
         \\      </div>
         \\
-    , .{header});
+    , .{ title, header });
 }
 
 pub fn writeFooter(output_file: fs.File, is_index: bool) !void {

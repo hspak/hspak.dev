@@ -131,7 +131,7 @@ const Post = struct {
         output_file = try fs.cwd().createFile(post_index_path, .{});
         defer output_file.close();
 
-        try partials.writeHeader(output_file, false);
+        try partials.writeHeader(output_file, false, self.meta.title);
 
         var updated = std.ArrayList(u8).init(self.allocator);
         if (!std.mem.eql(u8, self.meta.created_at, self.updated_at)) {

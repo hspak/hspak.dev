@@ -34,7 +34,7 @@ fn buildIndex(allocator: *std.mem.Allocator) !void {
     defer index_file.close();
     std.debug.warn("[ ] creating main index: {s}\n", .{index_path});
 
-    try partials.writeHeader(index_file, true);
+    try partials.writeHeader(index_file, true, "Blog: Hong Shick Pak");
     try posts.writeIndex(index_file);
     try partials.writeFooter(index_file, true);
 }
