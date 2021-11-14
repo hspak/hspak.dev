@@ -19,6 +19,7 @@ a:hover {
 h1, h2, h3, h4 {
   font-family: Helvetica, Arial, sans-serif;
   margin: 0;
+  padding-top: 0.5em;
 }
 
 h1 {
@@ -32,13 +33,16 @@ blockquote {
   padding: 0.5em;
 }
 
+code {
+  background: #494949;
+}
+
 pre {
-  /* TODO: update */
   background: #494949;
   color: #fff;
   padding: 1em;
-  border-radius: 8px;
-  margin-left: 2em;
+  margin: 0 1em 0 1em;
+  overflow: scroll;
 }
 
 .indexHeader {

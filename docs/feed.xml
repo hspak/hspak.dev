@@ -2,11 +2,92 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 <title>Hong's Blog</title>
 <link href="https://hspak.dev/"/>
-<updated>November 6, 2021</updated>
+<updated>November 14, 2021</updated>
 <author>
   <name>Hong Shick Pak</name>
 </author>
 <id>https://hspak.dev/atom.xml</id><entry>
+  <title>Framework Laptop</title>
+  <published>November 14, 2021</published>
+  <updated>November 14, 2021</updated>
+  <link href="https://hspak.dev/post/framework-laptop/" type="text/html"/>
+  <id>https://hspak.dev/post/framework-laptop/</id>
+  <content type="html">
+    &lt;p&gt;I recently purchased the &lt;a href=&quot;https://frame.work&quot;&gt;framework laptop&lt;/a&gt; for personal
+use and have been dailying it for almost a month now. It's spec'd as follows:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;DIY Edition&lt;/li&gt;
+&lt;li&gt;i7-1165G7 (will be referring to this as the tiger lake CPU)&lt;/li&gt;
+&lt;li&gt;Intel wifi AX210 no vPro&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.amazon.com/gp/product/B08DKB5LWY&quot;&gt;1 TB SK hynix Gold P31&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.amazon.com/gp/product/B08C4X9VR5&quot;&gt;32 GB Crucial DDR4 3200 MHz&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;2x USB-C, 1x USB-A, 1x microSD modules&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;a href=&quot;https://guides.frame.work/Guide/Framework+Laptop+DIY+Edition+Quick+Start+Guide/57&quot;&gt;The install process was super easy&lt;/a&gt;,
+except for hooking up the tiny connectors for the wifi module. I also recently
+got an M1 max macbook for work and the build quality is honestly not far behind.
+It's respectable considering it's almost 3x cheaper than the macbook. There are
+a couple things I would like to see improved however:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;The hinge feels a bit too stiff and wobbles a bit more than I'd like. Compared
+to the macbook hinge, it feels lacking.&lt;/li&gt;
+&lt;li&gt;The venting is it bit lacking and the CPU feels like it's choking at times
+(though this is probably the consequence of the CPU choice -- more on this
+later).&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;I have Arch linux on it with &lt;a href=&quot;https://github.com/hspak/homelab/blob/master/laptops/fmw&quot;&gt;my own bespoke
+installer&lt;/a&gt; and almost
+everything &lt;em&gt;just works&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;I'm coming from a Lenovo Thinkpad X1 Carbon Gen 5 so my thoughts will be
+baselined from how the Framework laptop performs against it.&lt;/p&gt;
+&lt;h3&gt;What Works Well&lt;/h3&gt;
+&lt;p&gt;The display is great (though glossy) and the 3:2 aspect ratio is great. I am
+running a wayland based window manager and the HiDPI is not an issue -- I had no
+problems with scaling. I also love the manual kill switches for the webcam and
+microphone.&lt;/p&gt;
+&lt;p&gt;The keyboard is also solid and I don't feel any sort of flexing. I do want to
+re-iterate that the build quality is great considering they optimized the laptop
+for full repairability.&lt;/p&gt;
+&lt;p&gt;The Framework team is fairly active on their &lt;a href=&quot;https://community.frame.work/&quot;&gt;community forum&lt;/a&gt;
+which is great to see. Some examples:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;They were proactive about letting users know of the
+&lt;a href=&quot;https://community.frame.work/t/using-the-ax210-with-linux-on-the-framework-laptop/1844&quot;&gt;bluetooth issues on linux&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;They're currently working on getting the
+&lt;a href=&quot;https://community.frame.work/t/public-beta-test-bios-v3-06-driver-bundle-2021-10-29/10167/100&quot;&gt;bios update support through LVFS&lt;/a&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;What Doesn't Work Well&lt;/h3&gt;
+&lt;p&gt;The CPU is super power hungry and I've seen it temporarily pull ~42W of power on
+on occasion which spikes the CPU temps to 100C. For sustained load, it seems to
+maintain a steady ~28W of power draw and usually hovers around 80C. This wouldn't
+necessarily be an issue, but the fan is quite loud when it kicks on and it tends
+to kick on more often than I'd like. (Numbers were pulled from &lt;a href=&quot;https://github.com/amanusk/s-tui&quot;&gt;s-tui&lt;/a&gt;.)&lt;/p&gt;
+&lt;p&gt;The tiger lake CPU doesn't &lt;a href=&quot;https://twitter.com/jeremy_soller/status/1335591509207384065?s=20&quot;&gt;suspend well&lt;/a&gt;.
+&lt;em&gt;Technically&lt;/em&gt; tiger lake on the Framework does support deep sleep which you can
+enable by toggling the method in &lt;code&gt;/sys/power/mem_sleep&lt;/code&gt;, but it seem to cause
+resuming to take an absurd amount of time (10+ seconds). You may as well
+just poweroff the laptop at that point. For reference, mine boots around 12
+seconds pretty consistently:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ systemd-analyze
+Startup finished in 7.670s (firmware) + 249ms (loader) + 1.129s (kernel) + 288ms (initrd) + 3.025s (userspace) = 12.364s 
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;The current (and default) suspend setup eats a significant amount of power.
+Anecdotally, it drains 2.5% to 3% of the battery per hour. This is a huge
+regression from my Thinkpad which could stay suspended for a week and I still
+wouldn't have to worry about battery life. This is probably my biggest complaint
+of the laptop.&lt;/p&gt;
+&lt;h3&gt;Concluding Thoughts&lt;/h3&gt;
+&lt;p&gt;I think the Framework laptop is great, but unless you absolutely need a laptop
+today, I would recommend you wait until there is a better CPU option. The
+thermal load combined with the suspend issues make the tiger lake a really
+annoying option as a laptop CPU.&lt;/p&gt;
+&lt;p&gt;If Framework is able to continue to grow their marketplace and start supporting
+more CPU and other components, I think there's zero reason for me to purchase
+another laptop. I would love to be able to swap the CPU/mainboard at some point
+in the future.&lt;/p&gt;
+  </content>
+</entry>
+<entry>
   <title>New Blog</title>
   <published>Oct 31, 2021</published>
   <updated>November 6, 2021</updated>
