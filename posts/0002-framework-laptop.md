@@ -21,7 +21,7 @@ It's respectable considering it's almost 3x cheaper than the macbook. There are
 a couple things I would like to see improved however:
 - The hinge feels a bit too stiff and wobbles a bit more than I'd like. Compared
   to the macbook hinge, it feels lacking.
-- The venting is it bit lacking and the CPU feels like it's choking at times
+- The venting is also a bit lacking and the CPU feels like it's choking at times
   (though this is probably the consequence of the CPU choice -- more on this
   later).
 
