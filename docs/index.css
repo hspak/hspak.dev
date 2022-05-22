@@ -1,13 +1,29 @@
 body {
-  background: #333;
-  color: #ddd;
+  background: #fff;
+  color: #333;
 }
 a {
   text-decoration: none;
-  color: #e0ccb8;
+  color: #369;
 }
 a:hover {
-  color: #c96;
+  color: #5b84ad;
+}
+
+a > h1 {
+  color: #333;
+}
+a > h1:hover {
+  color: #5b84ad;
+}
+a > h2 {
+  color: #333;
+}
+a > h2:hover {
+  color: #5b84ad;
+}
+a > div {
+  color: #333;
 }
 
 .container, html, body {
@@ -34,6 +50,10 @@ blockquote {
 }
 
 code {
+  background: #e0ccb8;
+}
+
+pre > code {
   background: #494949;
 }
 
