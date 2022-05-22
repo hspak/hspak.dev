@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Publishing a Go binary to NPM</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta name="referrer" content="strict-origin">
+    <meta name="author" content="Hong Shick Pak">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">
+    <meta name="description" content="Blog of Hong Shick Pak">
+    <meta property="og:url" content="https://hspak.dev">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Hspak">
+    <meta property="og:title" content="Hspak">
+    <meta property="og:description" content="Blog of Hong Shick Pak">
+    <meta property="twitter:creator" content="@hspasta">
+    <link rel="canonical" href="https://hspak.dev/">
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div class="outer">
+    <div class="container">
+      <div class="block">
+      <a href="/"><h1>Blog</h1></a>
+      </div>
+      <div class="block">
+        <h2>Publishing a Go binary to NPM</h2>
+        <div class="date">May 22, 2022 </div>
+        <div class="body">
+<p>I recently published a Go binary to <a href="https://www.npmjs.com/">NPM</a>, similar to
+how <a href="https://github.com/evanw/esbuild">esbuild</a> is a go binary that's also
+published to NPM. When I finally understood how publishing NPM packages worked
+(on a surface level), I had this... uncanny feeling on how much flexibility NPM
+provides to anyone who wants to publish a package.</p>
+<p>It ultimately allows the user to <strong>upload a directory of whatever</strong> they would like
+and write an <strong>arbitary javascript code that is allowed to run on install</strong>.</p>
+<h3>Publishing Go to NPM</h3>
+<p>The first question may be why I'm bothering to try this in the first place? I
+hacked on a <a href="https://github.com/hspak/gopm3">weekend project</a> to <del>spite</del>
+scratch an itch on how much work it would take to replace
+<a href="https://github.com/Unitech/pm2">pm2</a> for some basic process &quot;management&quot; for
+local dev purposes. I wanted to maintain feature parity for things I cared
+about, one of which was ease of installation for JS devs.</p>
+<p>All that was really required to publish an NPM package is to have a directory with
+a <code>package.json</code> file, stick whatever else you'd like in that directory, and use
+their CLI tool to publish it to their registry. To break down the full
+requirements of publishing Go to NPM, it is:</p>
+<ul>
+<li>Build the go binaries targetting the OS/Architectures you'd like to support.</li>
+<li>Place the go binaries in the NPM directory.</li>
+<li>Have an install script that checks to see what OS/Arch the requesting system is.</li>
+<li>Have a small javascript shim to run the correct go binary as a child process.</li>
+</ul>
+<p>Esbuild goes one step further that this and leverages the <code>optionalDependencies</code>
+feature of NPM to only download the go binary for the exact OS/Arch of the
+requesting system. I've opted for the dumb and simple route of just publishing
+all the go binaries in the same package.</p>
+<h3>How I Implemented</h3>
+<p>I started with a completely bottoms up approach because I knew nothing about
+publishing NPM modules going into this project. But as a result, I think what I
+ended up with is the most simple process you could have (though it's not
+automated and not really reproducible the way it's setup today).</p>
+<p>First, I have a dedicated <code>npm</code> directory that represents the skeleton of the
+NPM package that will ultimately be published. The things that matter are:</p>
+<ul>
+<li>
+<p>These bits in the <code>package.json</code>:</p>
+<pre><code class="language-json">  &quot;scripts&quot;: {
+    &quot;postinstall&quot;: &quot;node install.js&quot;
+  },
+  &quot;bin&quot;: {
+    &quot;gopm3&quot;: &quot;src/index.js&quot;
+  },
+</code></pre>
+<p>The <code>postinstall</code> step runs a script to determine which go binary we need to
+actually install and delete the rest.</p>
+<p>The <code>bin</code> specifies the entrypoint of the program which is a JS shim to
+execute the go binary as a child process.</p>
+</li>
+<li>
+<p>There is a dumb shell script that builds the go binaries for all the OS/Arch
+pairs that we care about and places them in the NPM dir where the
+<code>postinstall</code> script expects them. It then templates out a <code>package.json</code> just
+to update the version. To finish, we tag the git repo and call the <code>npm</code> CLI
+to publish the <code>npm</code> directory to their registry.</p>
+</li>
+</ul>
+<p>Feel free to check out the <a href="https://github.com/hspak/gopm3">project repo</a> to see
+the full picture! (And the <a href="https://www.npmjs.com/package/@hspak/gopm3">npm package</a> itself)</p>
+        </div>
+      </div>      <div class="block">
+        <div class="footer">
+          <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+</html>

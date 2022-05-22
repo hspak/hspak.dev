@@ -51,6 +51,8 @@ blockquote {
 
 code {
   background: #e0ccb8;
+  border-radius: 4px;
+  padding: 0 2px 0 2px;
 }
 
 pre > code {

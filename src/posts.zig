@@ -179,7 +179,7 @@ const Post = struct {
         }
 
         try self.validate();
-        var parser = try koino.parser.Parser.init(self.allocator, koino.Options{});
+        var parser = try koino.parser.Parser.init(self.allocator, koino.Options{ .extensions = .{ .strikethrough = true } });
         defer parser.deinit();
 
         var markdown = try self.file.reader().readAllAlloc(self.allocator, 1024 * 1024);
