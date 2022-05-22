@@ -17,7 +17,7 @@ pub const Posts = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: *std.mem.Allocator, path: []const u8) !Posts {
+    pub fn init(allocator: std.mem.Allocator, path: []const u8) !Posts {
         var posts_dir = try fs.cwd().openDir(path, .{ .iterate = true });
         defer posts_dir.close();
         var iter = posts_dir.iterate();
@@ -72,7 +72,7 @@ pub const Posts = struct {
 const Post = struct {
     const Self = @This();
 
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     full_path: []const u8,
     file: fs.File,
     updated_at: []const u8,
@@ -86,8 +86,8 @@ const Post = struct {
         created_at: []const u8,
     },
 
-    pub fn init(allocator: *std.mem.Allocator, full_path: []const u8) !Post {
-        var post_file = try fs.cwd().openFile(full_path, .{ .read = true });
+    pub fn init(allocator: std.mem.Allocator, full_path: []const u8) !Post {
+        var post_file = try fs.cwd().openFile(full_path, .{ .mode = .read_only });
         const stat = try post_file.stat();
         const updated_at = try time.formatUnixTime(allocator, stat.mtime);
 
@@ -127,7 +127,7 @@ const Post = struct {
         };
 
         var output_file: std.fs.File = undefined;
-        std.debug.warn("[ ] creating: {s}\n", .{post_index_path});
+        std.debug.print("[ ] creating: {s}\n", .{post_index_path});
         output_file = try fs.cwd().createFile(post_index_path, .{});
         defer output_file.close();
 

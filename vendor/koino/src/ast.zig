@@ -6,7 +6,7 @@ pub fn Ast(comptime T: type) type {
     return struct {
         const Self = @This();
 
-        allocator: *mem.Allocator,
+        allocator: mem.Allocator,
         data: T,
 
         parent: ?*Self = null,
@@ -15,7 +15,7 @@ pub fn Ast(comptime T: type) type {
         first_child: ?*Self = null,
         last_child: ?*Self = null,
 
-        pub fn create(allocator: *mem.Allocator, data: T) !*Self {
+        pub fn create(allocator: mem.Allocator, data: T) !*Self {
             var obj = try allocator.create(Self);
             obj.* = .{
                 .allocator = allocator,
@@ -25,7 +25,6 @@ pub fn Ast(comptime T: type) type {
         }
 
         pub fn deinit(self: *Self) void {
-            self.data.deinit(self.allocator);
             var it = self.first_child;
             while (it) |child| {
                 var next = child.next;

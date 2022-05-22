@@ -7,16 +7,16 @@ pub const Atom = struct {
 
     feed: std.ArrayList(u8),
     output_file: std.fs.File,
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
 
-    pub fn init(allocator: *std.mem.Allocator, output_path: []const u8) !*Self {
+    pub fn init(allocator: std.mem.Allocator, output_path: []const u8) !*Self {
         std.fs.cwd().deleteFile(output_path) catch |err| switch (err) {
             error.FileNotFound => {},
             else => return err,
         };
         _ = try std.fs.cwd().createFile(output_path, .{});
 
-        var file = try std.fs.cwd().openFile(output_path, .{ .write = true });
+        var file = try std.fs.cwd().openFile(output_path, .{ .mode = .write_only });
         var atom = try allocator.create(Self);
         atom.feed = std.ArrayList(u8).init(allocator);
         atom.output_file = file;
@@ -77,7 +77,7 @@ pub const Atom = struct {
     }
 };
 
-fn htmlreference(allocator: *std.mem.Allocator, html_body: []u8) ![]const u8 {
+fn htmlreference(allocator: std.mem.Allocator, html_body: []u8) ![]const u8 {
     var encoded_body = std.ArrayList(u8).init(allocator);
     const stream = encoded_body.writer();
     for (html_body) |char| {
