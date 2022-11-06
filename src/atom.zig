@@ -38,6 +38,8 @@ pub const Atom = struct {
 
     fn header(self: *Self, posts: Posts) !void {
         const stream = self.feed.writer();
+        const timestamp = try posts.latestUpdatedAt();
+        const formatted_timestamp = try time.formatUnixTime(self.allocator, timestamp);
         try stream.print(
             \\<?xml version="1.0" encoding="utf-8"?>
             \\<feed xmlns="http://www.w3.org/2005/Atom">
@@ -48,7 +50,7 @@ pub const Atom = struct {
             \\  <name>Hong Shick Pak</name>
             \\</author>
             \\<id>https://hspak.dev/atom.xml</id>
-        , .{time.formatUnixTime(self.allocator, try posts.latestUpdatedAt())});
+        , .{formatted_timestamp});
     }
 
     fn addEntries(self: *Self, posts: Posts) !void {

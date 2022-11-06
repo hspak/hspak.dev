@@ -18,7 +18,7 @@ pub const Posts = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator, path: []const u8) !Posts {
-        var posts_dir = try fs.cwd().openDir(path, .{ .iterate = true });
+        var posts_dir = try fs.cwd().openIterableDir(path, .{});
         defer posts_dir.close();
         var iter = posts_dir.iterate();
 
