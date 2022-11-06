@@ -2,11 +2,58 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 <title>Hong's Blog</title>
 <link href="https://hspak.dev/"/>
-<updated>May 22, 2022</updated>
+<updated>November 6, 2022</updated>
 <author>
   <name>Hong Shick Pak</name>
 </author>
 <id>https://hspak.dev/atom.xml</id><entry>
+  <title>Strong Opinions, Loosely Held</title>
+  <published>November 6, 2022</published>
+  <updated>November 6, 2022</updated>
+  <link href="https://hspak.dev/post/strong-opinions-loosely-held/" type="text/html"/>
+  <id>https://hspak.dev/post/strong-opinions-loosely-held/</id>
+  <content type="html">
+    &lt;p&gt;How do you strongly hold an opinion... but hold it loosely? I think it's a
+poorly worded phrase, but here's how I interpret it.&lt;/p&gt;
+&lt;p&gt;An opinion worth holding is one worth defending. Scientific experiments start
+with a hypothesis, &lt;em&gt;an informed opinion&lt;/em&gt;. It's an opinion they believe is worth
+exploring. Otherwise, why bother and waste time for all parties? Many open
+source projects have an RFC process. Why bother submit one when you're willing
+to withdraw it at any feedback or criticism?&lt;/p&gt;
+&lt;p&gt;But for all of these processes, there needs to be a certain threshold for them
+to pass. How much supporting evidence is required to validate a hypothesis? How
+much support is required approve an RFC?&lt;/p&gt;
+&lt;p&gt;I believe this is where it gets fuzzy, and important. There is no clear answer
+for what that threshold is for each instance. It needs to be up to the owner of
+that opinion to decide at what point do they concede. The people that I've
+enjoyed working with the most excell at this. It's easy to hold constructive
+debates and maintain reason. We continuously help and challenge each other to
+improve. There's always a dance, a back-and-forth, &lt;em&gt;some conflict&lt;/em&gt;, but a
+resolution at the end.&lt;/p&gt;
+&lt;p&gt;I think an opinion is kind of like story telling. There's something there, but
+it needs to be developed. I like &lt;a href=&quot;https://www.youtube.com/watch?v=RG4WcRAgm7Y&quot;&gt;Dan Harmon's Story
+Circle&lt;/a&gt; and it fits fairly well.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;(You) This is status quo.&lt;/li&gt;
+&lt;li&gt;(Need) You identify an area of improvement, something worth investigating.&lt;/li&gt;
+&lt;li&gt;(Go) You form an opinion -- there's some unknown out there that you try to
+model through your past experiences.&lt;/li&gt;
+&lt;li&gt;(Search) You do some external research to help validate or refuse your
+opinion yourself.&lt;/li&gt;
+&lt;li&gt;(Find) You think you are correct.&lt;/li&gt;
+&lt;li&gt;(Take) You share with someone and they disagree. Or you run an experiment and
+it disagrees. You debate, reform your opinion, etc.&lt;/li&gt;
+&lt;li&gt;(Return) You reflect back on the results.&lt;/li&gt;
+&lt;li&gt;(Change) Your opinion is now different than before, ideally for the better.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;As you go through your career, what you really get out of your experience in the
+end is a collection of opinions -- &amp;quot;do this, do that&amp;quot;, &amp;quot;this is bad&amp;quot;, &amp;quot;this is
+good&amp;quot;. And ultimately, it's your job to make sure that these are the &amp;quot;right&amp;quot;
+opinions to hold. So let's help ourselves improve and tread that fine line
+between maintaining your opinion and conceding to the other side.&lt;/p&gt;
+  </content>
+</entry>
+<entry>
   <title>Publishing a Go binary to NPM</title>
   <published>May 22, 2022</published>
   <updated>May 22, 2022</updated>
