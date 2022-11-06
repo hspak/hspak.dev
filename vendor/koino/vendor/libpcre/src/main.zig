@@ -91,15 +91,15 @@ pub const Regex = struct {
         var err: [*c]const u8 = undefined;
         var err_offset: c_int = undefined;
 
-        const pcre = c.pcre_compile(pattern, options.compile(), &err, &err_offset, 0) orelse {
-            std.debug.print("pcre_compile (at {}): {s}\n", .{ err_offset, @ptrCast([*:0]const u8, err) });
+        const pcre = c.pcre_compile(pattern.ptr, options.compile(), &err, &err_offset, 0) orelse {
+            std.log.warn("pcre_compile (at {}): {s}\n", .{ err_offset, @ptrCast([*:0]const u8, err) });
             return error.CompileError;
         };
         errdefer c.pcre_free.?(pcre);
 
         const pcre_extra = c.pcre_study(pcre, 0, &err);
         if (err != 0) {
-            std.debug.print("pcre_study: {s}\n", .{@ptrCast([*:0]const u8, err)});
+            std.log.warn("pcre_study: {s}\n", .{@ptrCast([*:0]const u8, err)});
             return error.CompileError;
         }
         errdefer c.pcre_free_study(pcre_extra);
@@ -132,7 +132,7 @@ pub const Regex = struct {
         // result == 0 implies there were capture groups that didn't fit into ovector.
         // We don't care.
         if (result < 0) {
-            std.debug.print("pcre_exec: {}\n", .{result});
+            std.log.warn("pcre_exec: {}\n", .{result});
             return error.ExecError; // TODO: should clarify
         }
         return Capture{ .start = @intCast(usize, ovector[0]), .end = @intCast(usize, ovector[1]) };
@@ -154,7 +154,7 @@ pub const Regex = struct {
         // 0 implies we didn't allocate enough ovector, and should never happen.
         std.debug.assert(result != 0);
         if (result < 0) {
-            std.debug.print("pcre_exec: {}\n", .{result});
+            std.log.warn("pcre_exec: {}\n", .{result});
             return error.ExecError; // TODO: should clarify
         }
 

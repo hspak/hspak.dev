@@ -10,7 +10,7 @@ const mem = std.mem;
 const os = std.os;
 const testing = std.testing;
 
-/// The result returned from StreamingClap.next
+/// The result returned from Clap.next
 pub fn Arg(comptime Id: type) type {
     return struct {
         const Self = @This();
@@ -20,10 +20,18 @@ pub fn Arg(comptime Id: type) type {
     };
 }
 
+pub const Error = error{
+    MissingValue,
+    InvalidArgument,
+    DoesntTakeValue,
+};
+
 /// A command line argument parser which, given an ArgIterator, will parse arguments according
-/// to the params. StreamingClap parses in an iterating manner, so you have to use a loop
-/// together with StreamingClap.next to parse all the arguments of your program.
-pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
+/// to the params. Clap parses in an iterating manner, so you have to use a loop together with
+/// Clap.next to parse all the arguments of your program.
+///
+/// This parser is the building block for all the more complicated parsers.
+pub fn Clap(comptime Id: type, comptime ArgIterator: type) type {
     return struct {
         const State = union(enum) {
             normal,
@@ -46,10 +54,10 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
         pub fn next(parser: *@This()) !?Arg(Id) {
             switch (parser.state) {
                 .normal => return try parser.normal(),
-                .chaining => |state| return try parser.chainging(state),
+                .chaining => |state| return try parser.chaining(state),
                 .rest_are_positional => {
                     const param = parser.positionalParam() orelse unreachable;
-                    const value = (try parser.iter.next()) orelse return null;
+                    const value = parser.iter.next() orelse return null;
                     return Arg(Id){ .param = param, .value = value };
                 },
             }
@@ -71,7 +79,7 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
                             continue;
                         if (param.takes_value == .none) {
                             if (maybe_value != null)
-                                return parser.err(arg, .{ .long = name }, error.DoesntTakeValue);
+                                return parser.err(arg, .{ .long = name }, Error.DoesntTakeValue);
 
                             return Arg(Id){ .param = param };
                         }
@@ -80,16 +88,16 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
                             if (maybe_value) |v|
                                 break :blk v;
 
-                            break :blk (try parser.iter.next()) orelse
-                                return parser.err(arg, .{ .long = name }, error.MissingValue);
+                            break :blk parser.iter.next() orelse
+                                return parser.err(arg, .{ .long = name }, Error.MissingValue);
                         };
 
                         return Arg(Id){ .param = param, .value = value };
                     }
 
-                    return parser.err(arg, .{ .long = name }, error.InvalidArgument);
+                    return parser.err(arg, .{ .long = name }, Error.InvalidArgument);
                 },
-                .short => return try parser.chainging(.{
+                .short => return try parser.chaining(.{
                     .arg = arg,
                     .index = 0,
                 }),
@@ -99,18 +107,18 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
                     // arguments.
                     if (mem.eql(u8, arg, "--")) {
                         parser.state = .rest_are_positional;
-                        const value = (try parser.iter.next()) orelse return null;
+                        const value = parser.iter.next() orelse return null;
                         return Arg(Id){ .param = param, .value = value };
                     }
 
                     return Arg(Id){ .param = param, .value = arg };
                 } else {
-                    return parser.err(arg, .{}, error.InvalidArgument);
+                    return parser.err(arg, .{}, Error.InvalidArgument);
                 },
             }
         }
 
-        fn chainging(parser: *@This(), state: State.Chaining) !?Arg(Id) {
+        fn chaining(parser: *@This(), state: State.Chaining) !?Arg(Id) {
             const arg = state.arg;
             const index = state.index;
             const next_index = index + 1;
@@ -137,13 +145,13 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
                 const next_is_eql = if (next_index < arg.len) arg[next_index] == '=' else false;
                 if (param.takes_value == .none) {
                     if (next_is_eql)
-                        return parser.err(arg, .{ .short = short }, error.DoesntTakeValue);
+                        return parser.err(arg, .{ .short = short }, Error.DoesntTakeValue);
                     return Arg(Id){ .param = param };
                 }
 
                 if (arg.len <= next_index) {
-                    const value = (try parser.iter.next()) orelse
-                        return parser.err(arg, .{ .short = short }, error.MissingValue);
+                    const value = parser.iter.next() orelse
+                        return parser.err(arg, .{ .short = short }, Error.MissingValue);
 
                     return Arg(Id){ .param = param, .value = value };
                 }
@@ -154,7 +162,7 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
                 return Arg(Id){ .param = param, .value = arg[next_index..] };
             }
 
-            return parser.err(arg, .{ .short = arg[index] }, error.InvalidArgument);
+            return parser.err(arg, .{ .short = arg[index] }, Error.InvalidArgument);
         }
 
         fn positionalParam(parser: *@This()) ?*const clap.Param(Id) {
@@ -184,7 +192,7 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
         };
 
         fn parseNextArg(parser: *@This()) !?ArgInfo {
-            const full_arg = (try parser.iter.next()) orelse return null;
+            const full_arg = parser.iter.next() orelse return null;
             if (mem.eql(u8, full_arg, "--") or mem.eql(u8, full_arg, "-"))
                 return ArgInfo{ .arg = full_arg, .kind = .positional };
             if (mem.startsWith(u8, full_arg, "--"))
@@ -209,7 +217,7 @@ fn testNoErr(
     results: []const Arg(u8),
 ) !void {
     var iter = args.SliceIterator{ .args = args_strings };
-    var c = StreamingClap(u8, args.SliceIterator){
+    var c = Clap(u8, args.SliceIterator){
         .params = params,
         .iter = &iter,
     };
@@ -236,7 +244,7 @@ fn testErr(
 ) !void {
     var diag: clap.Diagnostic = undefined;
     var iter = args.SliceIterator{ .args = args_strings };
-    var c = StreamingClap(u8, args.SliceIterator){
+    var c = Clap(u8, args.SliceIterator){
         .params = params,
         .iter = &iter,
         .diagnostic = &diag,

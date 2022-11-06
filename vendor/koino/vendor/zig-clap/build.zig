@@ -1,25 +1,29 @@
 const std = @import("std");
-const builtin = @import("builtin");
 
 const Builder = std.build.Builder;
-const Mode = builtin.Mode;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
     const target = b.standardTargetOptions(.{});
 
     const test_all_step = b.step("test", "Run all tests in all modes.");
-    inline for (@typeInfo(std.builtin.Mode).Enum.fields) |field| {
-        const test_mode = @field(std.builtin.Mode, field.name);
-        const mode_str = @tagName(test_mode);
+    for ([_]bool{ true, false }) |stage1| {
+        for (std.meta.tags(std.builtin.Mode)) |test_mode| {
+            const mode_str = @tagName(test_mode);
+            const stage1_str = if (stage1) "stage1" else "stage2";
 
-        const tests = b.addTest("clap.zig");
-        tests.setBuildMode(test_mode);
-        tests.setTarget(target);
+            const tests = b.addTest("clap.zig");
+            tests.setBuildMode(test_mode);
+            tests.setTarget(target);
+            tests.use_stage1 = stage1;
 
-        const test_step = b.step("test-" ++ mode_str, "Run all tests in " ++ mode_str ++ ".");
-        test_step.dependOn(&tests.step);
-        test_all_step.dependOn(test_step);
+            const test_step = b.step(
+                b.fmt("test-{s}-{s}", .{ stage1_str, mode_str }),
+                b.fmt("Run all tests with {s} compiler in {s}.", .{ stage1_str, mode_str }),
+            );
+            test_step.dependOn(&tests.step);
+            test_all_step.dependOn(test_step);
+        }
     }
 
     const example_step = b.step("examples", "Build examples");
@@ -62,7 +66,7 @@ fn readMeStep(b: *Builder) *std.build.Step {
             const stream = file.writer();
             try stream.print(@embedFile("example/README.md.template"), .{
                 @embedFile("example/simple.zig"),
-                @embedFile("example/simple-error.zig"),
+                @embedFile("example/simple-ex.zig"),
                 @embedFile("example/streaming-clap.zig"),
                 @embedFile("example/help.zig"),
                 @embedFile("example/usage.zig"),

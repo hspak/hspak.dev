@@ -3,44 +3,47 @@ const std = @import("std");
 
 const debug = std.debug;
 const io = std.io;
+const process = std.process;
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-
     // First we specify what parameters our program can take.
-    // We can use `parseParam` to parse a string to a `Param(Help)`
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("-h, --help             Display this help and exit.              ") catch unreachable,
-        clap.parseParam("-n, --number <NUM>     An option parameter, which takes a value.") catch unreachable,
-        clap.parseParam("-s, --string <STR>...  An option parameter which can be specified multiple times.") catch unreachable,
-        clap.parseParam("<POS>...") catch unreachable,
+    // We can use `parseParamsComptime` to parse a string into an array of `Param(Help)`
+    const params = comptime clap.parseParamsComptime(
+        \\-h, --help             Display this help and exit.
+        \\-n, --number <INT>     An option parameter, which takes a value.
+        \\-a, --answer <ANSWER>  An option parameter which takes an enum.
+        \\-s, --string <STR>...  An option parameter which can be specified multiple times.
+        \\<FILE>...
+        \\
+    );
+
+    // Declare our own parsers which are used to map the argument strings to other
+    // types.
+    const YesNo = enum { yes, no };
+    const parsers = comptime .{
+        .STR = clap.parsers.string,
+        .FILE = clap.parsers.string,
+        .INT = clap.parsers.int(usize, 10),
+        .ANSWER = clap.parsers.enumeration(YesNo),
     };
 
-    // We then initialize an argument iterator. We will use the OsIterator as it nicely
-    // wraps iterating over arguments the most efficient way on each os.
-    var iter = try clap.args.OsIterator.init(allocator);
-    defer iter.deinit();
-
-    // Initalize our diagnostics, which can be used for reporting useful errors.
-    // This is optional. You can also pass `.{}` to `clap.parse` if you don't
-    // care about the extra information `Diagnostics` provides.
     var diag = clap.Diagnostic{};
-    var args = clap.parseEx(clap.Help, &params, &iter, .{
-        .allocator = allocator,
+    var res = clap.parse(clap.Help, &params, parsers, .{
         .diagnostic = &diag,
     }) catch |err| {
-        // Report useful error and exit
         diag.report(io.getStdErr().writer(), err) catch {};
         return err;
     };
-    defer args.deinit();
+    defer res.deinit();
 
-    if (args.flag("--help"))
-        debug.warn("--help\n", .{});
-    if (args.option("--number")) |n|
-        debug.warn("--number = {s}\n", .{n});
-    for (args.options("--string")) |s|
-        debug.warn("--string = {s}\n", .{s});
-    for (args.positionals()) |pos|
-        debug.warn("{s}\n", .{pos});
+    if (res.args.help)
+        debug.print("--help\n", .{});
+    if (res.args.number) |n|
+        debug.print("--number = {}\n", .{n});
+    if (res.args.answer) |a|
+        debug.print("--answer = {s}\n", .{@tagName(a)});
+    for (res.args.string) |s|
+        debug.print("--string = {s}\n", .{s});
+    for (res.positionals) |pos|
+        debug.print("{s}\n", .{pos});
 }

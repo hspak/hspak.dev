@@ -3,11 +3,12 @@ const builtin = @import("builtin");
 const assert = std.debug.assert;
 
 const clap = @import("clap");
+const koino = @import("./koino.zig");
 
-const Parser = @import("parser.zig").Parser;
-const Options = @import("options.zig").Options;
-const nodes = @import("nodes.zig");
-const html = @import("html.zig");
+const Parser = koino.parser.Parser;
+const Options = koino.Options;
+const nodes = koino.nodes;
+const html = koino.html;
 
 pub fn main() !void {
     // In debug, use the GeneralPurposeAllocator as the Parser internal allocator
@@ -16,14 +17,14 @@ pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
     var arena: std.heap.ArenaAllocator = undefined;
 
-    var allocator: *std.mem.Allocator = undefined;
+    var allocator: std.mem.Allocator = undefined;
 
     if (builtin.mode == .Debug) {
         gpa = std.heap.GeneralPurposeAllocator(.{}){};
-        allocator = &gpa.allocator;
+        allocator = gpa.allocator();
     } else {
         arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        allocator = &arena.allocator;
+        allocator = arena.allocator();
     }
 
     defer {
@@ -38,8 +39,8 @@ pub fn main() !void {
     var args = try parseArgs(&options);
     var parser = try Parser.init(allocator, options);
 
-    if (args.positionals().len > 0) {
-        for (args.positionals()) |pos| {
+    if (args.positionals.len > 0) {
+        for (args.positionals) |pos| {
             var markdown = try std.fs.cwd().readFileAlloc(allocator, pos, 1024 * 1024 * 1024);
             defer allocator.free(markdown);
             try parser.feed(markdown);
@@ -71,44 +72,42 @@ pub fn main() !void {
 const params = params: {
     @setEvalBranchQuota(2000);
     break :params [_]clap.Param(clap.Help){
-        clap.parseParam("-h, --help                       Display this help and exit") catch unreachable,
-        clap.parseParam("-u, --unsafe                     Render raw HTML and dangerous URLs") catch unreachable,
-        clap.parseParam("-e, --extension <EXTENSION>...   Enable an extension (" ++ extensionsFriendly ++ ")") catch unreachable,
-        clap.parseParam("    --header-anchors             Generate anchors for headers") catch unreachable,
-        clap.parseParam("    --smart                      Use smart punctuation") catch unreachable,
-        clap.Param(clap.Help){
-            .takes_value = .one,
-        },
+        clap.parseParam("-h, --help                 Display this help and exit") catch unreachable,
+        clap.parseParam("-u, --unsafe               Render raw HTML and dangerous URLs") catch unreachable,
+        clap.parseParam("-e, --extension <str>...   Enable an extension (" ++ extensionsFriendly ++ ")") catch unreachable,
+        clap.parseParam("    --header-anchors       Generate anchors for headers") catch unreachable,
+        clap.parseParam("    --smart                Use smart punctuation") catch unreachable,
+        clap.parseParam("<str>") catch unreachable,
     };
 };
 
-const Args = clap.Args(clap.Help, &params);
+const ClapResult = clap.Result(clap.Help, &params, clap.parsers.default);
 
-fn parseArgs(options: *Options) !Args {
+fn parseArgs(options: *Options) !ClapResult {
     var stderr = std.io.getStdErr().writer();
 
-    var args = try clap.parse(clap.Help, &params, .{});
+    var res = try clap.parse(clap.Help, &params, clap.parsers.default, .{});
 
-    if (args.flag("--help")) {
+    if (res.args.help) {
         try stderr.writeAll("Usage: koino ");
-        try clap.usage(stderr, &params);
+        try clap.usage(stderr, clap.Help, &params);
         try stderr.writeAll("\n\nOptions:\n");
-        try clap.help(stderr, &params);
+        try clap.help(stderr, clap.Help, &params, .{});
         std.os.exit(0);
     }
 
     options.* = .{};
-    if (args.flag("--unsafe"))
+    if (res.args.unsafe)
         options.render.unsafe = true;
-    if (args.flag("--smart"))
+    if (res.args.smart)
         options.parse.smart = true;
-    if (args.flag("--header-anchors"))
+    if (res.args.@"header-anchors")
         options.render.header_anchors = true;
 
-    for (args.options("--extension")) |extension|
+    for (res.args.extension) |extension|
         try enableExtension(extension, options);
 
-    return args;
+    return res;
 }
 
 const extensions = blk: {
@@ -145,7 +144,7 @@ fn enableExtension(extension: []const u8, options: *Options) !void {
 }
 
 /// Performs work using internalAllocator, and writes the result to a Writer.
-fn markdownToHtmlInternal(writer: anytype, internalAllocator: *std.mem.Allocator, options: Options, markdown: []const u8) !void {
+fn markdownToHtmlInternal(writer: anytype, internalAllocator: std.mem.Allocator, options: Options, markdown: []const u8) !void {
     var doc = try parse(internalAllocator, options, markdown);
     defer doc.deinit();
 
@@ -153,7 +152,7 @@ fn markdownToHtmlInternal(writer: anytype, internalAllocator: *std.mem.Allocator
 }
 
 /// Parses Markdown into an AST.  Use `deinit()' on the returned document to free memory.
-pub fn parse(internalAllocator: *std.mem.Allocator, options: Options, markdown: []const u8) !*nodes.AstNode {
+pub fn parse(internalAllocator: std.mem.Allocator, options: Options, markdown: []const u8) !*nodes.AstNode {
     var p = try Parser.init(internalAllocator, options);
     defer p.deinit();
     try p.feed(markdown);
@@ -161,7 +160,7 @@ pub fn parse(internalAllocator: *std.mem.Allocator, options: Options, markdown: 
 }
 
 /// Performs work with an ArenaAllocator backed by the page allocator, and allocates the result HTML with resultAllocator.
-pub fn markdownToHtml(resultAllocator: *std.mem.Allocator, options: Options, markdown: []const u8) ![]u8 {
+pub fn markdownToHtml(resultAllocator: std.mem.Allocator, options: Options, markdown: []const u8) ![]u8 {
     var result = std.ArrayList(u8).init(resultAllocator);
     errdefer result.deinit();
     try markdownToHtmlWriter(result.writer(), options, markdown);
@@ -172,7 +171,7 @@ pub fn markdownToHtml(resultAllocator: *std.mem.Allocator, options: Options, mar
 pub fn markdownToHtmlWriter(writer: anytype, options: Options, markdown: []const u8) !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    try markdownToHtmlInternal(writer, &arena.allocator, options, markdown);
+    try markdownToHtmlInternal(writer, arena.allocator(), options, markdown);
 }
 
 /// Uses a GeneralPurposeAllocator for scratch work instead of an ArenaAllocator to aid in locating memory leaks.
@@ -181,15 +180,15 @@ pub fn testMarkdownToHtml(options: Options, markdown: []const u8) ![]u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
-    var doc = try parse(&gpa.allocator, options, markdown);
+    var doc = try parse(gpa.allocator(), options, markdown);
     defer doc.deinit();
 
     var result = std.ArrayList(u8).init(std.testing.allocator);
     errdefer result.deinit();
-    try html.print(result.writer(), &gpa.allocator, options, doc);
+    try html.print(result.writer(), gpa.allocator(), options, doc);
     return result.toOwnedSlice();
 }
 
-test "" {
+test {
     std.testing.refAllDecls(@This());
 }
