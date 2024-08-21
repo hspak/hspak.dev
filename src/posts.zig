@@ -18,7 +18,10 @@ pub const Posts = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator, path: []const u8) !Posts {
-        var posts_dir = try fs.cwd().openIterableDir(path, .{});
+        var posts_dir = fs.openDirAbsolute(path, .{ .iterate = true, .access_sub_paths = false, .no_follow = true }) catch |err| switch (err) {
+            error.FileNotFound => return PostError.MissingPosts,
+            else => unreachable,
+        };
         defer posts_dir.close();
         var iter = posts_dir.iterate();
 
@@ -29,7 +32,7 @@ pub const Posts = struct {
             post.* = try Post.init(allocator, post_path);
             try list.append(post);
         }
-        std.sort.sort(*Post, list.items, {}, newerFile);
+        std.sort.insertion(*Post, list.items, {}, newerFile);
         return Posts{
             .list = list,
         };
@@ -169,7 +172,7 @@ const Post = struct {
     }
 
     fn parsePost(self: *Self) !void {
-        var buf = try self.allocator.alloc(u8, self.stat.size);
+        const buf = try self.allocator.alloc(u8, self.stat.size);
         var stream = self.file.reader();
 
         var in_header = true;
@@ -182,7 +185,7 @@ const Post = struct {
         var parser = try koino.parser.Parser.init(self.allocator, koino.Options{ .extensions = .{ .strikethrough = true } });
         defer parser.deinit();
 
-        var markdown = try self.file.reader().readAllAlloc(self.allocator, 1024 * 1024);
+        const markdown = try self.file.reader().readAllAlloc(self.allocator, 1024 * 1024);
         try parser.feed(markdown);
 
         var doc = try parser.finish();

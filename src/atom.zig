@@ -16,7 +16,7 @@ pub const Atom = struct {
         };
         _ = try std.fs.cwd().createFile(output_path, .{});
 
-        var file = try std.fs.cwd().openFile(output_path, .{ .mode = .write_only });
+        const file = try std.fs.cwd().openFile(output_path, .{ .mode = .write_only });
         var atom = try allocator.create(Self);
         atom.feed = std.ArrayList(u8).init(allocator);
         atom.output_file = file;

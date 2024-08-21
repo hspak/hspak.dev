@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub fn formatUnixTime(allocator: std.mem.Allocator, unixtime: i128) ![]const u8 {
-    const secs = @intCast(u64, @divFloor(unixtime, 1_000_000_000));
+    const secs: u64 = @intCast(@divFloor(unixtime, 1_000_000_000));
     const epoch = std.time.epoch.EpochSeconds{ .secs = secs };
     const day = epoch.getEpochDay();
     const year_day = day.calculateYearDay();
