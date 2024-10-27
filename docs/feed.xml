@@ -7,6 +7,50 @@
   <name>Hong Shick Pak</name>
 </author>
 <id>https://hspak.dev/atom.xml</id><entry>
+  <title>Why is CI so slow?</title>
+  <published>Oct 26, 2024</published>
+  <updated>Oct 26, 2024</updated>
+  <link href="https://hspak.dev/post/why-is-ci-slow/" type="text/html"/>
+  <id>https://hspak.dev/post/why-is-ci-slow/</id>
+  <content type="html">
+    &lt;p&gt;I believe that containerized CI environments helped the industry move forward.
+We have easily reproducable environments for testing and allows companies to
+stay relatively platform agnostic. But they're often reeeally slow. It's sad
+that most CI improvements have been thanks to tools like &lt;a href=&quot;https://bun.sh/&quot;&gt;bun&lt;/a&gt; or
+&lt;a href=&quot;https://astral.sh/blog/uv&quot;&gt;uv&lt;/a&gt; re-thinking package management from the ground
+up with performance at the forefront.&lt;/p&gt;
+&lt;p&gt;Most CI platforms &lt;a href=&quot;https://circleci.com/&quot;&gt;are&lt;/a&gt;
+&lt;a href=&quot;https://github.com/features/actions&quot;&gt;all&lt;/a&gt;
+&lt;a href=&quot;https://docs.gitlab.com/runner/&quot;&gt;the&lt;/a&gt; &lt;a href=&quot;https://buildkite.com/&quot;&gt;same&lt;/a&gt;: you
+define some YAML-esque file a DAG of containers that run some shell scripts.
+These CI platforms can easily run multi-tenant workloads and improve margins
+since these container executions are mostly ephemeral. Artifacts are usually
+pushed out to an object store like &lt;a href=&quot;https://aws.amazon.com/s3/&quot;&gt;AWS S3&lt;/a&gt;. Most of
+them offer a &amp;quot;cache&amp;quot; where they can push and pull from an object store. This is
+not really a cache. It's a hack at an attempt to mimic what a cache on local dev
+looks like.&lt;/p&gt;
+&lt;p&gt;So much of CI time is burned:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Downloading a container, which is often massive to include all necessary tooling.&lt;/li&gt;
+&lt;li&gt;Installing dependencies of your project, which is also often also slow.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;I wonder why there has not been an attempt (a successful attempt?) of creating a
+CI platform that mimics local development environment:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;The git repo is &amp;quot;hot&amp;quot;. It'll have the last commit checked out, which will never be that far away from the origin server.
+Pulling down the next branch to test should be small incremenatal delta.&lt;/li&gt;
+&lt;li&gt;The filesystem persists: the dependencies are already mostly there (mod new changes).
+Any cached files generated during builds and tests persist.
+There's no slow fetches from an object store.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Of course, a persistent fs allows for bugs to creep up (stale cache not being
+invalidated, invalid state not cleaned up, etc.). But this should be the
+exception we face, not the default. No developer is blowing their environment
+away on every commit. CI shouldn't have to either.&lt;/p&gt;
+&lt;p&gt;Food for thought.&lt;/p&gt;
+  </content>
+</entry>
+<entry>
   <title>What if I'm Wrong</title>
   <published>December 28, 2022</published>
   <updated>December 28, 2022</updated>

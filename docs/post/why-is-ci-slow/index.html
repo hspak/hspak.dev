@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Why is CI so slow?</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta name="referrer" content="strict-origin">
+    <meta name="author" content="Hong Shick Pak">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">
+    <meta name="description" content="Blog of Hong Shick Pak">
+    <meta property="og:url" content="https://hspak.dev">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Hspak">
+    <meta property="og:title" content="Hspak">
+    <meta property="og:description" content="Blog of Hong Shick Pak">
+    <meta property="twitter:creator" content="@hspasta">
+    <link rel="canonical" href="https://hspak.dev/">
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div class="outer">
+    <div class="container">
+      <div class="block">
+      <a href="/"><h1>Blog</h1></a>
+      </div>
+      <div class="block">
+        <h2>Why is CI so slow?</h2>
+        <div class="date">Oct 26, 2024 </div>
+        <div class="body">
+<p>I believe that containerized CI environments helped the industry move forward.
+We have easily reproducable environments for testing and allows companies to
+stay relatively platform agnostic. But they're often reeeally slow. It's sad
+that most CI improvements have been thanks to tools like <a href="https://bun.sh/">bun</a> or
+<a href="https://astral.sh/blog/uv">uv</a> re-thinking package management from the ground
+up with performance at the forefront.</p>
+<p>Most CI platforms <a href="https://circleci.com/">are</a>
+<a href="https://github.com/features/actions">all</a>
+<a href="https://docs.gitlab.com/runner/">the</a> <a href="https://buildkite.com/">same</a>: you
+define some YAML-esque file a DAG of containers that run some shell scripts.
+These CI platforms can easily run multi-tenant workloads and improve margins
+since these container executions are mostly ephemeral. Artifacts are usually
+pushed out to an object store like <a href="https://aws.amazon.com/s3/">AWS S3</a>. Most of
+them offer a &quot;cache&quot; where they can push and pull from an object store. This is
+not really a cache. It's a hack at an attempt to mimic what a cache on local dev
+looks like.</p>
+<p>So much of CI time is burned:</p>
+<ul>
+<li>Downloading a container, which is often massive to include all necessary tooling.</li>
+<li>Installing dependencies of your project, which is also often also slow.</li>
+</ul>
+<p>I wonder why there has not been an attempt (a successful attempt?) of creating a
+CI platform that mimics local development environment:</p>
+<ul>
+<li>The git repo is &quot;hot&quot;. It'll have the last commit checked out, which will never be that far away from the origin server.
+Pulling down the next branch to test should be small incremenatal delta.</li>
+<li>The filesystem persists: the dependencies are already mostly there (mod new changes).
+Any cached files generated during builds and tests persist.
+There's no slow fetches from an object store.</li>
+</ul>
+<p>Of course, a persistent fs allows for bugs to creep up (stale cache not being
+invalidated, invalid state not cleaned up, etc.). But this should be the
+exception we face, not the default. No developer is blowing their environment
+away on every commit. CI shouldn't have to either.</p>
+<p>Food for thought.</p>
+        </div>
+      </div>      <div class="block">
+        <div class="footer">
+          <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+</html>
