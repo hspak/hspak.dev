@@ -4,7 +4,7 @@ const partials = @import("partials.zig");
 const time = @import("time.zig");
 const koino = @import("koino");
 
-const PlaceholderText = "missing!!!";
+pub const PlaceholderText = "missing!!!";
 const PostError = error{
     MissingName,
     MissingTitle,
@@ -18,7 +18,7 @@ pub const Posts = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator, path: []const u8) !Posts {
-        var posts_dir = fs.openDirAbsolute(path, .{ .iterate = true, .access_sub_paths = false, .no_follow = true }) catch |err| switch (err) {
+        var posts_dir = std.fs.cwd().openDir(path, .{ .iterate = true, .access_sub_paths = false, .no_follow = true }) catch |err| switch (err) {
             error.FileNotFound => return PostError.MissingPosts,
             else => unreachable,
         };
@@ -29,7 +29,7 @@ pub const Posts = struct {
         while (try iter.next()) |next| {
             const post_path = try fs.path.join(allocator, &[_][]const u8{ path, next.name });
             const post = try allocator.create(Post);
-            post.* = try Post.init(allocator, post_path);
+            post.* = try Post.init(allocator, post_path, next.name);
             try list.append(post);
         }
         std.sort.insertion(*Post, list.items, {}, newerFile);
@@ -45,6 +45,12 @@ pub const Posts = struct {
     }
 
     pub fn writePost(self: Self) !void {
+        // Just nuke the directories so we are guaranteed to never be stale.
+        try fs.cwd().deleteTree("docs/draft");
+        try fs.cwd().deleteTree("docs/post");
+        try fs.cwd().makeDir("docs/draft");
+        try fs.cwd().makeDir("docs/post");
+
         for (self.list.items) |post| {
             try post.printPost();
         }
@@ -78,7 +84,6 @@ const Post = struct {
     allocator: std.mem.Allocator,
     full_path: []const u8,
     file: fs.File,
-    updated_at: []const u8,
     stat: fs.File.Stat,
     parsedHTML: std.ArrayList(u8),
     meta: struct {
@@ -87,19 +92,20 @@ const Post = struct {
         desc: []const u8,
         draft: bool,
         created_at: []const u8,
+        updated_at: []const u8,
     },
+    id: u16,
 
-    pub fn init(allocator: std.mem.Allocator, full_path: []const u8) !Post {
+    pub fn init(allocator: std.mem.Allocator, full_path: []const u8, file_path: []const u8) !Post {
         var post_file = try fs.cwd().openFile(full_path, .{ .mode = .read_only });
         const stat = try post_file.stat();
-        const updated_at = try time.formatUnixTime(allocator, stat.mtime);
+        const id = try std.fmt.parseUnsigned(u16, file_path[0..4], 10);
 
         var post = Post{
             .allocator = allocator,
             .full_path = full_path,
             .file = post_file,
             .parsedHTML = std.ArrayList(u8).init(allocator),
-            .updated_at = updated_at,
             .stat = stat,
             .meta = .{
                 .name = PlaceholderText,
@@ -107,7 +113,9 @@ const Post = struct {
                 .desc = PlaceholderText,
                 .draft = true,
                 .created_at = PlaceholderText,
+                .updated_at = PlaceholderText,
             },
+            .id = id,
         };
         try post.parsePost();
         return post;
@@ -118,16 +126,11 @@ const Post = struct {
     }
 
     pub fn printPost(self: *Self) !void {
-        const postState = if (self.meta.draft) "draft" else "post";
-        const post_dir_path = try fs.path.join(self.allocator, &[_][]const u8{ "docs", postState, self.meta.name });
+        const post_state = if (self.meta.draft) "draft" else "post";
+        const posts_dir = try fs.path.join(self.allocator, &[_][]const u8{ "docs", post_state });
+        const post_dir_path = try fs.path.join(self.allocator, &[_][]const u8{ posts_dir, self.meta.name });
         const post_index_path = try fs.path.join(self.allocator, &[_][]const u8{ post_dir_path, "index.html" });
-        fs.cwd().makeDir(post_dir_path) catch |err| switch (err) {
-            error.PathAlreadyExists => {},
-            else => return err,
-        };
-        fs.cwd().deleteFile(post_index_path) catch |err| switch (err) {
-            else => {},
-        };
+        try fs.cwd().makeDir(post_dir_path);
 
         var output_file: std.fs.File = undefined;
         std.debug.print("[ ] creating: {s}\n", .{post_index_path});
@@ -137,8 +140,8 @@ const Post = struct {
         try partials.writeHeader(output_file, false, self.meta.title);
 
         var updated = std.ArrayList(u8).init(self.allocator);
-        if (!std.mem.eql(u8, self.meta.created_at, self.updated_at)) {
-            try updated.writer().print("(Updated at: {s})", .{self.updated_at});
+        if (!std.mem.eql(u8, self.meta.created_at, self.meta.updated_at) and !std.mem.eql(u8, self.meta.updated_at, PlaceholderText)) {
+            try updated.writer().print("(Updated at: {s})", .{self.meta.updated_at});
         }
         const stream = output_file.writer();
         try stream.print(
@@ -221,6 +224,10 @@ const Post = struct {
             var iter = std.mem.split(u8, line, ":");
             _ = iter.next().?;
             self.meta.created_at = try self.trimWhitespace(iter.next().?);
+        } else if (std.mem.eql(u8, line[0..13], "Updated Date:")) {
+            var iter = std.mem.split(u8, line, ":");
+            _ = iter.next().?;
+            self.meta.updated_at = try self.trimWhitespace(iter.next().?);
         }
         return true;
     }
@@ -257,5 +264,5 @@ const Post = struct {
 };
 
 fn newerFile(_: void, p1: *Post, p2: *Post) bool {
-    return p1.stat.mtime > p2.stat.mtime;
+    return p1.id > p2.id;
 }

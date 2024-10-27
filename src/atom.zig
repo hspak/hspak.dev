@@ -1,5 +1,6 @@
 const std = @import("std");
 const Posts = @import("posts.zig").Posts;
+const PlaceholderText = @import("posts.zig").PlaceholderText;
 const time = @import("time.zig");
 
 pub const Atom = struct {
@@ -61,7 +62,11 @@ pub const Atom = struct {
             _ = try stream.write("<entry>\n");
             try stream.print("  <title>{s}</title>\n", .{item.meta.title});
             try stream.print("  <published>{s}</published>\n", .{item.meta.created_at});
-            try stream.print("  <updated>{s}</updated>\n", .{item.updated_at});
+            if (!std.mem.eql(u8, item.meta.updated_at, PlaceholderText)) {
+                try stream.print("  <updated>{s}</updated>\n", .{item.meta.updated_at});
+            } else {
+                try stream.print("  <updated>{s}</updated>\n", .{item.meta.created_at});
+            }
             try stream.print(
                 \\  <link href="https://hspak.dev/post/{s}/" type="text/html"/>
             , .{item.meta.name});

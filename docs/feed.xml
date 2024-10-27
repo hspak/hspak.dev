@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 <title>Hong's Blog</title>
 <link href="https://hspak.dev/"/>
-<updated>December 28, 2022</updated>
+<updated>October 27, 2024</updated>
 <author>
   <name>Hong Shick Pak</name>
 </author>
@@ -333,7 +333,7 @@ in the future.&lt;/p&gt;
 <entry>
   <title>New Blog</title>
   <published>Oct 31, 2021</published>
-  <updated>November 6, 2021</updated>
+  <updated>Nov 6, 2021</updated>
   <link href="https://hspak.dev/post/new-blog/" type="text/html"/>
   <id>https://hspak.dev/post/new-blog/</id>
   <content type="html">
