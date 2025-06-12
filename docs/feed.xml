@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 <title>Hong's Blog</title>
 <link href="https://hspak.dev/"/>
-<updated>October 27, 2024</updated>
+<updated>June 12, 2025</updated>
 <author>
   <name>Hong Shick Pak</name>
 </author>
@@ -389,6 +389,437 @@ post... The main motivation here was to write a static blog generator in
 somewhat tolerable for writing blog posts. Recently I found out there's already
 a &lt;a href=&quot;https://github.com/kivikakk/koino&quot;&gt;popular markdown parser for Zig&lt;/a&gt;!&lt;/p&gt;
 &lt;p&gt;Now that this is finally shipped, hopefully more posts will follow!&lt;/p&gt;
+  </content>
+</entry>
+<entry>
+  <title>Quick and Easy Mutt Setup</title>
+  <published>July 13, 2014</published>
+  <updated>July 13, 2014</updated>
+  <link href="https://hspak.dev/post/quick-and-easy-mutt-setup/" type="text/html"/>
+  <id>https://hspak.dev/post/quick-and-easy-mutt-setup/</id>
+  <content type="html">
+    &lt;p&gt;&lt;a href=&quot;http://www.mutt.org/&quot;&gt;Mutt&lt;/a&gt; is a powerful text-based email client which I found very nice to use for following open source development (without GitHub). For people with workflow that’s highly dependent on email, like &lt;a href=&quot;https://www.youtube.com/watch?v=IYsdk_N96vA&quot;&gt;Greg Kroah-Hartman&lt;/a&gt; – a Linux kernel developer/maintainer, I would highly recommend you give mutt a try. You could consider mutt the vim equivalent for email. It is highly customizable which comes at the cost of being incredibly annoying to setup, until now :D.&lt;/p&gt;
+&lt;p&gt;The obvious pitfall of being text-based is the inability to render HTML emails. This can be partially remedied through mutt’s ability to invoke outside programs for particular mimetypes. It let’s you view inline HTML emails using lynx or w3m, text-based web browsers. With them, the HTML emails are at least readable (unless there were loads of images, then the url spam makes it unbearable…).&lt;/p&gt;
+&lt;h2&gt;Setup&lt;/h2&gt;
+&lt;p&gt;The first setup is to install mutt and check that it has the builtin imap and stmp features enabled. I can’t speak for any other distros, but here is what Arch has enabled by default:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;./configure --prefix=/usr --sysconfdir=/etc \
+              --enable-gpgme --enable-pop \
+              --enable-imap --enable-smtp \ &amp;lt;------ these
+              --enable-hcache --with-curses=/usr \
+              --with-regex --with-gss=/usr \
+              --with-ssl=/usr --with-sasl \
+              --with-idn
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;The imap and smtp flags are important for an easy setup. There are external programs that work well with mutt, but they add additional overhead in getting everything setup properly. As an example, offlineimap stores all your email locally and mutt reads those files. Your emails don’t automatically update and getting folder names to sync properly between local and the imap server were a pain to setup.&lt;/p&gt;
+&lt;p&gt;Common tools used with mutt:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Offlineimap - for receiving email&lt;/li&gt;
+&lt;li&gt;Msmtp - for sending email&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The following is a stripped down template of what I use that works for FastMail. Figure out your imap and smtp servers and ports. The template will work out of the box for FastMail. Copy the following into ~/.muttrc and launch mutt. The default hotkey to switch between folders is ‘y’. There you have it, a fully functional mutt.&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;# from setup_settings
+set my_server = &amp;quot;mail.messagingengine.com&amp;quot;
+set my_smtp_server = &amp;quot;mail.messagingengine.com&amp;quot;
+set my_user = &amp;quot;EMAIL&amp;quot;
+set my_pass = &amp;quot;PASS&amp;quot;
+
+# imap
+set mbox_type       = Maildir         # mailbox type
+set imap_user       = $my_user
+set imap_pass       = $my_pass
+set folder          = &amp;quot;imaps://$my_server&amp;quot;
+set spoolfile       = &amp;quot;=INBOX&amp;quot;
+set postponed       = &amp;quot;=INBOX.Drafts&amp;quot;
+
+set mailboxes &amp;quot;=INBOX&amp;quot; # add folders here like &amp;quot;=INBOX.label&amp;quot;
+
+# going through fastmail, setting this will save the email twice
+unset record
+
+# smtp
+set smtp_pass = $my_pass
+set smtp_url = smtp://$my_user@$my_smtp_server:587/
+set ssl_starttls = yes
+
+set realname = &amp;quot;NAME&amp;quot;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;The most annoying part to setting everything up is figuring out the folder names for everything. For FastMail, everything is prefixed ‘=’ and folders are period (.) separated[1].&lt;/p&gt;
+&lt;p&gt;For GMail, I believe everything is prefixed ‘+’ and folders are backslash separated (/) (i.e +Gmail/INBOX +Gmail/Label). Take this with a grain of salt.&lt;/p&gt;
+&lt;p&gt;The &lt;a href=&quot;/https://wiki.archlinux.org/index.php/Mutt&quot;&gt;ArchWiki&lt;/a&gt; is a good resource for setting up a lot of things with mutt.&lt;/p&gt;
+&lt;p&gt;If you’d like to see my setup, the config files are here.&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;[1] &lt;a href=&quot;https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports?d&quot;&gt;FastMail&lt;/a&gt;&lt;/p&gt;
+  </content>
+</entry>
+<entry>
+  <title>The FastMail Migration</title>
+  <published>May 26, 2014</published>
+  <updated>May 26, 2014</updated>
+  <link href="https://hspak.dev/post/the-fastmail-migration/" type="text/html"/>
+  <id>https://hspak.dev/post/the-fastmail-migration/</id>
+  <content type="html">
+    &lt;p&gt;&lt;em&gt;(revive notes: lost a lot of images)&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;I began my switch from Gmail to FastMail this weekend. I also decided to grab
+their enhanced package which allows custom domains with their email service[1].&lt;/p&gt;
+&lt;h2&gt;Rationale&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Reduce Google Dependency: It’s becoming increasingly difficult to find an
+internet service that Google hasn’t already taken a strong hold of. This
+isn’t necessarily a bad thing. Better integration between services generally
+equal greater convenience. However the tradeoff of the additional convenience
+is the amount of information they have access of you. I’m not going into tin
+foil hat mode, but I think it’s best kept in moderation. Things like Google
+Drive, Chrome and Android sync are all too useful to completely abandon my
+Google entirely. From now on, Gmail will only be a tool to access other
+Google services.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Web Client Performance: The Google web client feels very sluggish. From
+changing folders to opening emails, there’s is a noticeable delay in almost
+every action. The yellow loading bar at the top of the page of Gmail has been
+becoming more and more noticeable over the years. FastMail’s web client is
+much faster than Gmails. The UI is very clean, simple and intutive; there
+wasn’t much to learn except for a few new keyboard shortcuts switching over.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Custom Domain: This is something I’ve always wanted to have. Email is still
+central to your online identity and it’s nice to have it be a bit more
+personal.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2&gt;DNS Setup&lt;/h2&gt;
+&lt;p&gt;The first thing to do is point the DNS records of your domain to FastMail’s
+servers. For Namecheap, there should be a tab labeled Transfer DNS to webhost
+when under domain options. I’ve already transferred my DNS settings so it won’t
+look exactly like this. It should look similar to the following for other
+registrars too:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;missing-image&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;FastMail also allows you to point simply their MX server’s instead if you’d like
+to keep your current DNS servers.&lt;/p&gt;
+&lt;p&gt;If you do decided to change DNS records, the current DNS settings are no longer
+valid and your websites will not work. The same settings must be re-applied in
+FastMail’s servers. If you use an apex domain like I do, make sure you delete
+the default A record entry even after you add in your new ones. I didn’t do this
+initially, and this blog wouldn’t always resolve correctly. Go under Advanced -&amp;gt;
+Custom DNS to see something like this. The first two records are the relevant
+ones.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;missing-image&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Mail Setup Once all the DNS settings have settled, FastMail will email you to&lt;/h2&gt;
+&lt;p&gt;let you know everything is good to go. If you go under Advanced -&amp;gt; Virtual
+Domains, you can now setup your custom domain for your email. Scroll down to the
+Virtual Domains section and add your domain.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;missing-image&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;Then scroll up to the Virtual Aliases section and chose whatever name you’d like
+for your email. You are allowed to use a wildcard and have anything sent to
+@yourdomain to fill your inbox.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;missing-image&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;FastMail has more documented instructions here.&lt;/p&gt;
+&lt;h2&gt;Transition&lt;/h2&gt;
+&lt;p&gt;I decided against transferring all my old mail over. Chances are, I’m never
+going to look at them again and I’m not entirely abandoning my Gmail either.
+This also gives me a new chance to reorganize my mail into a more structured
+layout where as before, majority of my read emails remained in my inbox. I’ll be
+sure to write a review of my experience after another month or two of usage.&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;[1] &lt;a href=&quot;https://app.fastmail.com/signup/personal.html?domain=fastmail.fm&quot;&gt;FastMail&lt;/a&gt;&lt;/p&gt;
+  </content>
+</entry>
+<entry>
+  <title>On Arch Linux</title>
+  <published>Mar 5, 2014</published>
+  <updated>Mar 5, 2014</updated>
+  <link href="https://hspak.dev/post/on-arch-linux/" type="text/html"/>
+  <id>https://hspak.dev/post/on-arch-linux/</id>
+  <content type="html">
+    &lt;p&gt;(Revive note: I lost the original images and a lot of links are dead.)&lt;/p&gt;
+&lt;p&gt;I recently helped a friend of mine install &lt;a href=&quot;https://archlinux.org/&quot;&gt;Arch Linux&lt;/a&gt;
+and it’s motivated me to write about Arch. This is not a tutorial or promotional
+blog for Arch. These are my ramblings on Arch, my experiences with Arch and my
+recommendations for using Arch.&lt;/p&gt;
+&lt;h2&gt;Brief Personal History&lt;/h2&gt;
+&lt;p&gt;I found Arch Linux sometime early in 2009 when I grew bored of how Windows XP
+looked and wanted an easier way to make my system look more ‘l33t.’ Windows
+Vista was not encouraging and Windows 7 was not yet released. I practiced
+installing inside a Virtualbox machine and eventually, managed to setup
+successful installation. Unfortunately, I didn’t have the courage to install on
+bare metal thinking I might cause hardware damage if I do something wrong. With
+the Windows 7 release around the corner, my interest in Linux dropped until 2011
+where I had that itch to try something new again. I’ve been an active user
+since.&lt;/p&gt;
+&lt;h2&gt;Installing Arch Linux&lt;/h2&gt;
+&lt;p&gt;The biggest hurdle to almost everyone who wants to try Arch Linux for the first
+time is the installation. In mid 2012, they
+&lt;a href=&quot;https://www.archlinux.org/news/install-media-20120715-released/&quot;&gt;announced&lt;/a&gt;
+that they removed their installer, named AIF (Arch Installation Framework), and
+in its place, several small scripts are provided for convenience. At their
+defence, The original installer software didn’t provide much functionality
+except to show a very minimal GUI with a list of steps to finish the
+installation.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;&amp;lt;missing-image&amp;gt;&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;For those more experienced, this change allows faster installs, and those new
+are at the mercy of the &lt;a href=&quot;https://wiki.archlinux.org/title/Main_page&quot;&gt;wiki&lt;/a&gt;. They
+also adopted a monthly release cycle for their install medias. Because Arch is a
+rolling release, it makes no sense for the liveCD’s to have tools that are
+heavily outdated.&lt;/p&gt;
+&lt;p&gt;The current Arch Linux installation really only has 3 major steps: - Setup your
+disk and partitions Install base packages Setup the bootloader&lt;/p&gt;
+&lt;p&gt;I don’t plan on writing up an installation guide (the
+&lt;a href=&quot;https://wiki.archlinux.org/title/Installation_guide&quot;&gt;Arch&lt;/a&gt;
+&lt;a href=&quot;https://wiki.archlinux.org/title/Help:Reading#Installation_of_packages&quot;&gt;Wiki&lt;/a&gt;
+pages on installation are fairly extensive, although be wary of the beginner’s
+guide – I’ve seen some questionable recommendations), but I have a few remarks
+on some potential quirks that some people may run into.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/UEFI&quot;&gt;UEFI&lt;/a&gt;&lt;/strong&gt;: It is the new cool thing that
+replaces BIOS and is now shipped with all modern computers. It requires
+different steps than the traditional installs with BIOS. To check whether
+your machine uses UEFI or BIOS, go into your BIOS settings on boot and it
+should be indicated somewhere under Boot Options. If you have a pretty GUI,
+its UEFI. Usually computers that support UEFI also supports legacy boot so
+for some, they have the option to stick with the old. The noticeable
+difference during setup is that UEFI requires a specific boot partition. If
+you plan on dual booting, different system’s have different levels of
+support:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Windows 7/8 32-bit&lt;/strong&gt;: UEFI is not supported.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Windows 7/8 64-bit&lt;/strong&gt;: In order to use UEFI, your disk must use GPT which is
+a successor to the MBR&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;OS X&lt;/strong&gt;: It already uses UEFI* and GPT. It doesn’t support MBR at all.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Linux&lt;/strong&gt;: Any combination of MBR/GPT and BIOS/UEFI is supported. If you do
+plan on dual booting, try to install Linux second. OS X and Windows are pretty
+strict about their paritions and will auto-create the EFI parition. Then you
+can either choose to share the EFI parition or create a separate one for each
+system. I personally like to share the parition, but to each to their own. I
+also recommend gummiboot &lt;em&gt;(revive edit: this is now systemd-boot)&lt;/em&gt;. It’s a
+very simple-to-setup UEFI boot manager.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;* Apple uses their own EFI implementation which may or may not be compliant with
+the UEFI standards[1].&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Network Access&lt;/strong&gt;: Without any network access, you cannot install Arch
+Linux. Why? There are no packages on the media for you to install. Going back to
+the install media, it doesn’t make much sense to ‘store’ packages in a rolling
+release distro. You’ll have an update to just about every package you have
+installed. Every once in a while, updates require manual intervention. These
+updates tend to break systems who’s system is very out-of-date. Check out the
+infamous filesystem update. This makes it very difficult to install on systems
+that can’t connect out-of-the-box (i.e Macbooks whose wifi drivers do not have
+official support). Easiest way to setup on those systems would be to find a
+prebuilt package (or build it yourself in another Arch system) to install the
+wifi drivers through a flash drive. Some people have had success tethering their
+phones as well.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Dedicated Graphics Cards&lt;/strong&gt;: These bad boys don’t get much love from
+anybody. The open source drivers perform underwhelmingly because neither AMD nor
+Nvidia provide sufficient support. The open source drivers exist solely because
+open source community was able to reverse engineer the GPU’s. There are binary
+blobs available for both AMD and Nvidia, but their support is about a generation
+behind, their performance is inferior to Windows[2] and it can be a pain to
+setup properly. Valve appears to be working with Nvidia and Intel to ready their
+release of SteamOS and Steam boxes so expect better support/performance
+(hopefully). I recommend skipping the dedicated cards, especially on laptops.
+The open source graphics drivers for Intel perform extremely well but the
+switchable graphics systems blow on Linux. If you must have the power, Nvidia is
+the only officially supported platform on Arch. Official AMD(ATI) support was
+dropped several years ago.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Once the installation is complete, you have the bare Linux setup and it’s up to
+the user to configure their settings to their desire. I believe this is one of
+the biggest reasons why Arch has been consistently in the top 10 most used Linux
+distributions[3]. The only software that is required by Arch is the Arch package
+manager, pacman. Some could argue that systemd has been forced upon users, but
+it has heavy support from Red Hat. Also, Debian (and Ubuntu) have announced that
+they are transitioning to systemd so yay systemd! For the anti-fans, there are
+so many alternatives gaining support from the Arch community.&lt;/p&gt;
+&lt;p&gt;In the end, the installation process is just a bunch of commands you run. I’ve
+been writing a bare minimum installer for my personal use. It’s meant to setup
+my current system from scratch.&lt;/p&gt;
+&lt;h2&gt;Using Arch Linux&lt;/h2&gt;
+&lt;p&gt;These are a few tips on maintaining a healthy Arch installation.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Avoid Yaourt&lt;/strong&gt;: Do everyone a favor and choose a different AUR helper.
+Usually what happens is the new Arch users follow tutorials which tell them to
+install yaourt to install packages from the AUR. They blindly use this tool
+which completely removes the need to understand how the Arch packaging system
+works. Then they ask for help and then get derailed for not RTFM. I suggest
+cower. There are many wrappers also for cower available for those who want
+more automation.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Keep Your System Up-to-date&lt;/strong&gt;: Try to update your system at least once a
+week. I update my system daily and it has caused me no problems. The Arch
+developers work on up-to-date systems and make sure that their packages work
+with other up-to-date packages. It’s probably ideal to follow the developers.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Never pacman -Sy (package)&lt;/strong&gt;: This cherry-picks an up-to-date package with
+your out-of-date system. It’s an incredibly easy way to break your install.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Never Auto-Update Packages&lt;/strong&gt;: This is another taboo in Arch. Some packages
+have useful outputs when they update and they require some user intervention.
+You also want to know what you’re updating. If something randomly breaks,
+you’ll have a much harder time finding the cause. Don’t have a background job
+running pacman -Syu all the time. If you want to know if you have any
+out-of-date packages, pacman comes with a simple script called checkupdates
+which safely checks for out-of-date packages.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Arch Tools&lt;/strong&gt;: A tool I use often is pkgfile. It’s an incredibly useful tool
+that lets you know which package offers which file. Say a package was missing
+a dependency and it had some error stating a library was missing. Running
+pkgfile on that library will tell you what package to download only if it is
+in one of your pacman servers you have listed in /etc/pacman.conf. Arch also
+has ABS which is very similar to FreeBSD Ports. It’s useful if you need to
+build an official package with different flags. For example, I rebuild vim
+updates because the python interpreter for Vim is disabled on the official
+package and it’s required by the YouCompleteMe Vim plugin.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Reading PKGBUILDS&lt;/strong&gt;: When installing a new package from the AUR, it is good
+practice to look at the PKGBUILD’s before you install the package. Anyone can
+upload anything in the AUR. It’s your responsibility to check the integrity of
+the package.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Have a LiveCD available&lt;/strong&gt;: This is common practice for any Linux
+distribution, but it’s vital you have one for Arch. You may have an update
+that somehow broke your system and you can’t boot anymore. You can’t fix that
+without a LiveCD available.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;The Kernel Issues&lt;/strong&gt;: Arch uses the newest stable release of Linux which may
+have some regressions. I had a pretty severe power regression a while back on
+my laptop which took several kernel iterations until it was finally fixed.
+Sometimes it may be more convenient to tell pacman to ignore the kernel
+updates if some problems arise in the newer ones.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Window Managers&lt;/strong&gt;: This is personal opinion, but I believe it is easier to
+maintain your system without a desktop environment (Gnome, KDE). Because DE’s
+are essentially software suites, there are many points of failure. When
+something doesn’t work the way you think it should, it’s more difficult to
+decided where to first look. Standalone window managers on the other hand do
+exactly as they’re labeled; they manage windows. Everything else is configured
+by the user, which also fits into the DIY mentally like the rest of Arch.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Obligatory screenshot to end the blog: &lt;code&gt;&amp;lt;missing-image&amp;gt;&lt;/code&gt;.&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;[1] &lt;a href=&quot;https://en.wikipedia.org/wiki/Unified_Extensible_Firmware_Interface#Operating_systems&quot;&gt;Wikipedia&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;[2] &lt;a href=&quot;http://blogs.valvesoftware.com/linux/faster-zombies/&quot;&gt;Maybe not always&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;[3] It’s not the most accurate benchmark, but there seems to be no alternatives.&lt;/p&gt;
+  </content>
+</entry>
+<entry>
+  <title>The GitHub Migration</title>
+  <published>Oct 27, 2013</published>
+  <updated>Jul 12, 2014</updated>
+  <link href="https://hspak.dev/post/the-github-migration/" type="text/html"/>
+  <id>https://hspak.dev/post/the-github-migration/</id>
+  <content type="html">
+    &lt;p&gt;For the sake of moving on and ease of pushing changes, I’ve moved my domain over
+to Github Pages and shut nginx down on my BeagleBone. Because I had already
+setup pages, there wasn’t much to be done.&lt;/p&gt;
+&lt;p&gt;Steps&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Create a file titled CNAME in the root directory and write the domain name
+inside.&lt;/li&gt;
+&lt;li&gt;Push file to masters branch of your Github repo.&lt;/li&gt;
+&lt;li&gt;&lt;del&gt;Change your DNS settings for your domain to point to 204.232.175.78. And thats it!&lt;/del&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Update (July 12, 2014)&lt;/strong&gt;: A while back, I got this email from GitHub:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;GitHub Pages recently underwent some improvements
+(https://github.com/blog/1715-faster-more-awesome-github-pages to make your site
+faster and more awesome, but we’ve noticed that www.hspak.com isn’t properly
+configured to take advantage of these new features. While your site will
+continue to work just fine, updating your domain’s configuration offers some
+additional speed and performance benefits. Instructions on updating your site’s
+IP address can be found at
+https://help.github.com/articles/setting-up-a-custom-domain-with-github-pages#step-2-configure-dns-records,
+and of course, you can always get in touch with a human at support@github.com.
+For the more technical minded folks who want to skip the help docs: your site’s
+DNS records are pointed to a deprecated IP address.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;The gist of it is, there are two ways to setup your DNS. If you would like
+GitHub to point to an apex or naked domain, then you point your a records to
+192.30.252.153 or 192.30.252.154. If you would like GitHub to point to a
+subdomain, i.e www, create a CNAME to point to username.github.io in your DNS.
+GitHub will automatically take care of redirecting from www to apex or
+vice-versa.&lt;/p&gt;
+  </content>
+</entry>
+<entry>
+  <title>It's Finally done</title>
+  <published>Oct 10, 2013</published>
+  <updated>Oct 10, 2013</updated>
+  <link href="https://hspak.dev/post/its-finally-done/" type="text/html"/>
+  <id>https://hspak.dev/post/its-finally-done/</id>
+  <content type="html">
+    &lt;p&gt;I’ve finally finished this website. I thought I’d to a walkthrough for future
+reference.&lt;/p&gt;
+&lt;h2&gt;The Tools&lt;/h2&gt;
+&lt;p&gt;I’m currently self-hosting this website through the following stack:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://beagleboard.org/BLACK&quot;&gt;BeagleBone Black&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://archlinuxarm.org/&quot;&gt;Arch ARM&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://docs.nginx.com/&quot;&gt;Nginx&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;I actually bought the BeagleBone Black for self-hosting. It’s something I’ve
+always wanted to experiment with and I had to jump on it with its low cost. I
+chose Arch ARM because I’m already a fan of Arch Linux. Installation was
+extremely short and honestly, it’s probably more user-friendly with it’s own
+cherry-picked AUR repo. Nginx is just awesome.&lt;/p&gt;
+&lt;p&gt;The actual website is built using:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://highlightjs.org/&quot;&gt;Hightlight.js&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://fontawesome.io/&quot;&gt;Font Awesome&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Jekyll seemed like a wise choice because its by Github and Github is awesome. I
+also didn’t know of any other easy to setup blogging platform other than
+Wordpress. I know Jekyll does have a built in code syntax highlighting (of
+sorts), but it requires Python and I didn’t want another dependency so I went
+with highlight.js.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;console.log(&amp;quot;Hello World&amp;quot;); // an example&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;I came across Font Awesome for social media icons and it’s defintely an
+overkill, but maybe I can find more uses for it other than the three icons I
+have on the top right.&lt;/p&gt;
+&lt;h2&gt;The Design&lt;/h2&gt;
+&lt;p&gt;Half the time contructing this website was spent trying to figure out how to
+make it less…bland. The best method I found was to just look for other blogs
+that already looked pretty and copy their ideas. So I added in a big black bar
+hoping to achieve the parallax effect like Github’s
+&lt;a href=&quot;https://github.com/404&quot;&gt;404&lt;/a&gt; page, but more subtle. I found the jQuery
+&lt;a href=&quot;https://github.com/cameronmcefee/plax&quot;&gt;plugin&lt;/a&gt; that they use and tried
+inplementing it, only to fail miserably. I decided that I should try to
+understand what it is actually doing later instead of just doing a copy pasta
+from the example. To replace it, I cropped an image from a random wallpaper and
+stuck it in. I faded it away in shadow to fit my greyscale-ish theme and made it
+focus on hover…becuase it was boring.&lt;/p&gt;
+&lt;p&gt;Definitely expect design overhauls in the future.&lt;/p&gt;
+&lt;h2&gt;Now What?&lt;/h2&gt;
+&lt;p&gt;This blog will be moved over to Github Pages and the domain as well. It’s
+actually already being mirrored
+&lt;a href=&quot;https://web.archive.org/web/20161004203141/http://hspak.github.io/&quot;&gt;here&lt;/a&gt;. I’m
+just keeping it on my BeagleBone so I can get used to setting up Nginx and other
+server configurations for my next project. I haven’t quite decided what kind of
+content I would like to keep here.&lt;/p&gt;
+&lt;p&gt;Being a static blog site, there’s not much use for javascript. One of my
+intentions for this website was to teach myself some javascript on the way, but
+there wasn’t anything useful I could think of that would be easy to implement.
+So as my next project, I’m thinking about a web app in
+&lt;a href=&quot;https://www.nodejs.org&quot;&gt;Node.js&lt;/a&gt; as my next project, hopefully successfully
+hosted on my BeagleBone. It will most likely be a simple chat platform since
+that’s what Ryan Dahl seemed to usually do in his talks so I think it’s a good
+place to start.&lt;/p&gt;
   </content>
 </entry>
 </feed>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+  <head>
+    <title>It's Finally done</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta name="referrer" content="strict-origin">
+    <meta name="author" content="Hong Shick Pak">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">
+    <meta name="description" content="Blog of Hong Shick Pak">
+    <meta property="og:url" content="https://hspak.dev">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Hspak">
+    <meta property="og:title" content="Hspak">
+    <meta property="og:description" content="Blog of Hong Shick Pak">
+    <meta property="twitter:creator" content="@hspasta">
+    <link rel="canonical" href="https://hspak.dev/">
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div class="outer">
+    <div class="container">
+      <div class="block">
+      <a href="/"><h1>Blog</h1></a>
+      </div>
+      <div class="block">
+        <h2>It's Finally done</h2>
+        <div class="date">Oct 10, 2013 </div>
+        <div class="body">
+<p>I’ve finally finished this website. I thought I’d to a walkthrough for future
+reference.</p>
+<h2>The Tools</h2>
+<p>I’m currently self-hosting this website through the following stack:</p>
+<ul>
+<li><a href="http://beagleboard.org/BLACK">BeagleBone Black</a></li>
+<li><a href="https://archlinuxarm.org/">Arch ARM</a></li>
+<li><a href="https://docs.nginx.com/">Nginx</a></li>
+</ul>
+<p>I actually bought the BeagleBone Black for self-hosting. It’s something I’ve
+always wanted to experiment with and I had to jump on it with its low cost. I
+chose Arch ARM because I’m already a fan of Arch Linux. Installation was
+extremely short and honestly, it’s probably more user-friendly with it’s own
+cherry-picked AUR repo. Nginx is just awesome.</p>
+<p>The actual website is built using:</p>
+<ul>
+<li><a href="https://jekyllrb.com/">Jekyll</a></li>
+<li><a href="https://highlightjs.org/">Hightlight.js</a></li>
+<li><a href="https://fontawesome.io/">Font Awesome</a></li>
+</ul>
+<p>Jekyll seemed like a wise choice because its by Github and Github is awesome. I
+also didn’t know of any other easy to setup blogging platform other than
+Wordpress. I know Jekyll does have a built in code syntax highlighting (of
+sorts), but it requires Python and I didn’t want another dependency so I went
+with highlight.js.</p>
+<p><code>console.log(&quot;Hello World&quot;); // an example</code></p>
+<p>I came across Font Awesome for social media icons and it’s defintely an
+overkill, but maybe I can find more uses for it other than the three icons I
+have on the top right.</p>
+<h2>The Design</h2>
+<p>Half the time contructing this website was spent trying to figure out how to
+make it less…bland. The best method I found was to just look for other blogs
+that already looked pretty and copy their ideas. So I added in a big black bar
+hoping to achieve the parallax effect like Github’s
+<a href="https://github.com/404">404</a> page, but more subtle. I found the jQuery
+<a href="https://github.com/cameronmcefee/plax">plugin</a> that they use and tried
+inplementing it, only to fail miserably. I decided that I should try to
+understand what it is actually doing later instead of just doing a copy pasta
+from the example. To replace it, I cropped an image from a random wallpaper and
+stuck it in. I faded it away in shadow to fit my greyscale-ish theme and made it
+focus on hover…becuase it was boring.</p>
+<p>Definitely expect design overhauls in the future.</p>
+<h2>Now What?</h2>
+<p>This blog will be moved over to Github Pages and the domain as well. It’s
+actually already being mirrored
+<a href="https://web.archive.org/web/20161004203141/http://hspak.github.io/">here</a>. I’m
+just keeping it on my BeagleBone so I can get used to setting up Nginx and other
+server configurations for my next project. I haven’t quite decided what kind of
+content I would like to keep here.</p>
+<p>Being a static blog site, there’s not much use for javascript. One of my
+intentions for this website was to teach myself some javascript on the way, but
+there wasn’t anything useful I could think of that would be easy to implement.
+So as my next project, I’m thinking about a web app in
+<a href="https://www.nodejs.org">Node.js</a> as my next project, hopefully successfully
+hosted on my BeagleBone. It will most likely be a simple chat platform since
+that’s what Ryan Dahl seemed to usually do in his talks so I think it’s a good
+place to start.</p>
+        </div>
+      </div>      <div class="block">
+        <div class="footer">
+          <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+</html>

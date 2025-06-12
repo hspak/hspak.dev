@@ -205,27 +205,27 @@ const Post = struct {
         } else if (line.len < 5) {
             return true;
         } else if (std.mem.eql(u8, line[0..5], "Name:")) {
-            var iter = std.mem.split(u8, line, ":");
+            var iter = std.mem.splitScalar(u8, line, ':');
             _ = iter.next().?;
             self.meta.name = try self.trimWhitespace(iter.next().?);
         } else if (std.mem.eql(u8, line[0..6], "Title:")) {
-            var iter = std.mem.split(u8, line, ":");
+            var iter = std.mem.splitScalar(u8, line, ':');
             _ = iter.next().?;
             self.meta.title = try self.trimWhitespace(iter.next().?);
         } else if (std.mem.eql(u8, line[0..6], "Draft:")) {
-            var iter = std.mem.split(u8, line, ":");
+            var iter = std.mem.splitScalar(u8, line, ':');
             _ = iter.next().?;
             self.meta.draft = if (std.mem.eql(u8, try self.trimWhitespace(iter.next().?), "false")) false else true;
         } else if (std.mem.eql(u8, line[0..12], "Description:")) {
-            var iter = std.mem.split(u8, line, ":");
+            var iter = std.mem.splitScalar(u8, line, ':');
             _ = iter.next().?;
             self.meta.desc = try self.trimWhitespace(iter.next().?);
         } else if (std.mem.eql(u8, line[0..13], "Publish Date:")) {
-            var iter = std.mem.split(u8, line, ":");
+            var iter = std.mem.splitScalar(u8, line, ':');
             _ = iter.next().?;
             self.meta.created_at = try self.trimWhitespace(iter.next().?);
         } else if (std.mem.eql(u8, line[0..13], "Updated Date:")) {
-            var iter = std.mem.split(u8, line, ":");
+            var iter = std.mem.splitScalar(u8, line, ':');
             _ = iter.next().?;
             self.meta.updated_at = try self.trimWhitespace(iter.next().?);
         }
@@ -264,5 +264,15 @@ const Post = struct {
 };
 
 fn newerFile(_: void, p1: *Post, p2: *Post) bool {
-    return p1.id > p2.id;
+    if (p1.id >= 9000 and p2.id >= 9000) {
+        return p1.id > p2.id;
+    } else {
+        if (p2.id >= 9000) {
+            return true;
+        }
+        if (p1.id >= 9000) {
+            return false;
+        }
+        return p1.id > p2.id;
+    }
 }

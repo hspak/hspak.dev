@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Quick and Easy Mutt Setup</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta name="referrer" content="strict-origin">
+    <meta name="author" content="Hong Shick Pak">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">
+    <meta name="description" content="Blog of Hong Shick Pak">
+    <meta property="og:url" content="https://hspak.dev">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Hspak">
+    <meta property="og:title" content="Hspak">
+    <meta property="og:description" content="Blog of Hong Shick Pak">
+    <meta property="twitter:creator" content="@hspasta">
+    <link rel="canonical" href="https://hspak.dev/">
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div class="outer">
+    <div class="container">
+      <div class="block">
+      <a href="/"><h1>Blog</h1></a>
+      </div>
+      <div class="block">
+        <h2>Quick and Easy Mutt Setup</h2>
+        <div class="date">July 13, 2014 </div>
+        <div class="body">
+<p><a href="http://www.mutt.org/">Mutt</a> is a powerful text-based email client which I found very nice to use for following open source development (without GitHub). For people with workflow that’s highly dependent on email, like <a href="https://www.youtube.com/watch?v=IYsdk_N96vA">Greg Kroah-Hartman</a> – a Linux kernel developer/maintainer, I would highly recommend you give mutt a try. You could consider mutt the vim equivalent for email. It is highly customizable which comes at the cost of being incredibly annoying to setup, until now :D.</p>
+<p>The obvious pitfall of being text-based is the inability to render HTML emails. This can be partially remedied through mutt’s ability to invoke outside programs for particular mimetypes. It let’s you view inline HTML emails using lynx or w3m, text-based web browsers. With them, the HTML emails are at least readable (unless there were loads of images, then the url spam makes it unbearable…).</p>
+<h2>Setup</h2>
+<p>The first setup is to install mutt and check that it has the builtin imap and stmp features enabled. I can’t speak for any other distros, but here is what Arch has enabled by default:</p>
+<pre><code>./configure --prefix=/usr --sysconfdir=/etc \
+              --enable-gpgme --enable-pop \
+              --enable-imap --enable-smtp \ &lt;------ these
+              --enable-hcache --with-curses=/usr \
+              --with-regex --with-gss=/usr \
+              --with-ssl=/usr --with-sasl \
+              --with-idn
+</code></pre>
+<p>The imap and smtp flags are important for an easy setup. There are external programs that work well with mutt, but they add additional overhead in getting everything setup properly. As an example, offlineimap stores all your email locally and mutt reads those files. Your emails don’t automatically update and getting folder names to sync properly between local and the imap server were a pain to setup.</p>
+<p>Common tools used with mutt:</p>
+<ul>
+<li>Offlineimap - for receiving email</li>
+<li>Msmtp - for sending email</li>
+</ul>
+<p>The following is a stripped down template of what I use that works for FastMail. Figure out your imap and smtp servers and ports. The template will work out of the box for FastMail. Copy the following into ~/.muttrc and launch mutt. The default hotkey to switch between folders is ‘y’. There you have it, a fully functional mutt.</p>
+<pre><code># from setup_settings
+set my_server = &quot;mail.messagingengine.com&quot;
+set my_smtp_server = &quot;mail.messagingengine.com&quot;
+set my_user = &quot;EMAIL&quot;
+set my_pass = &quot;PASS&quot;
+
+# imap
+set mbox_type       = Maildir         # mailbox type
+set imap_user       = $my_user
+set imap_pass       = $my_pass
+set folder          = &quot;imaps://$my_server&quot;
+set spoolfile       = &quot;=INBOX&quot;
+set postponed       = &quot;=INBOX.Drafts&quot;
+
+set mailboxes &quot;=INBOX&quot; # add folders here like &quot;=INBOX.label&quot;
+
+# going through fastmail, setting this will save the email twice
+unset record
+
+# smtp
+set smtp_pass = $my_pass
+set smtp_url = smtp://$my_user@$my_smtp_server:587/
+set ssl_starttls = yes
+
+set realname = &quot;NAME&quot;
+</code></pre>
+<p>The most annoying part to setting everything up is figuring out the folder names for everything. For FastMail, everything is prefixed ‘=’ and folders are period (.) separated[1].</p>
+<p>For GMail, I believe everything is prefixed ‘+’ and folders are backslash separated (/) (i.e +Gmail/INBOX +Gmail/Label). Take this with a grain of salt.</p>
+<p>The <a href="/https://wiki.archlinux.org/index.php/Mutt">ArchWiki</a> is a good resource for setting up a lot of things with mutt.</p>
+<p>If you’d like to see my setup, the config files are here.</p>
+<hr />
+<p>[1] <a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports?d">FastMail</a></p>
+        </div>
+      </div>      <div class="block">
+        <div class="footer">
+          <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+</html>
