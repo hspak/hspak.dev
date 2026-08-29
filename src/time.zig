@@ -1,12 +1,19 @@
-const std = @import("std");
+//! Calendar formatting for Unix timestamps.
 
-pub fn formatUnixTime(allocator: std.mem.Allocator, unixtime: i128) ![]const u8 {
-    const secs: u64 = @intCast(@divFloor(unixtime, 1_000_000_000));
-    const epoch = std.time.epoch.EpochSeconds{ .secs = secs };
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+const Timestamp = std.Io.Timestamp;
+
+const log = std.log.scoped(.time);
+
+/// Format `timestamp` as `Month D, YYYY`. Caller owns the returned slice.
+pub fn formatTimestamp(gpa: Allocator, timestamp: Timestamp) Allocator.Error![]const u8 {
+    const secs: u64 = @intCast(@max(timestamp.toSeconds(), 0));
+    const epoch: std.time.epoch.EpochSeconds = .{ .secs = secs };
     const day = epoch.getEpochDay();
     const year_day = day.calculateYearDay();
     const month_day = year_day.calculateMonthDay();
-    return try std.fmt.allocPrint(allocator, "{s} {d}, {d}", .{
+    return std.fmt.allocPrint(gpa, "{s} {d}, {d}", .{
         formatMonth(month_day.month),
         month_day.day_index + 1,
         year_day.year,
@@ -15,17 +22,17 @@ pub fn formatUnixTime(allocator: std.mem.Allocator, unixtime: i128) ![]const u8 
 
 fn formatMonth(month: std.time.epoch.Month) []const u8 {
     return switch (month) {
-        std.time.epoch.Month.jan => "January",
-        std.time.epoch.Month.feb => "February",
-        std.time.epoch.Month.mar => "March",
-        std.time.epoch.Month.apr => "April",
-        std.time.epoch.Month.may => "May",
-        std.time.epoch.Month.jun => "June",
-        std.time.epoch.Month.jul => "July",
-        std.time.epoch.Month.aug => "August",
-        std.time.epoch.Month.sep => "September",
-        std.time.epoch.Month.oct => "October",
-        std.time.epoch.Month.nov => "November",
-        std.time.epoch.Month.dec => "December",
+        .jan => "January",
+        .feb => "February",
+        .mar => "March",
+        .apr => "April",
+        .may => "May",
+        .jun => "June",
+        .jul => "July",
+        .aug => "August",
+        .sep => "September",
+        .oct => "October",
+        .nov => "November",
+        .dec => "December",
     };
 }

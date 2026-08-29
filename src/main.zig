@@ -1,40 +1,48 @@
+//! Static site generator for hspak.dev.
+
 const std = @import("std");
-const fs = std.fs;
-const io = std.io;
-const Atom = @import("atom.zig").Atom;
-const Posts = @import("posts.zig").Posts;
+const Io = std.Io;
+const Atom = @import("Atom.zig");
+const Posts = @import("Posts.zig");
 const partials = @import("partials.zig");
 
-pub fn main() anyerror!void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+const log = std.log.scoped(.main);
 
-    try buildIndex(allocator);
+pub fn main(init: std.process.Init) !void {
+    try buildIndex(init.gpa, init.io);
 }
 
-fn buildIndex(allocator: std.mem.Allocator) !void {
-    const index_path = try fs.path.join(allocator, &[_][]const u8{ "docs", "index.html" });
+fn buildIndex(gpa: std.mem.Allocator, io: Io) !void {
+    const cwd = Io.Dir.cwd();
+    const index_path = try Io.Dir.path.join(gpa, &.{ "docs", "index.html" });
+    defer gpa.free(index_path);
 
-    var posts = try Posts.init(allocator, "posts");
-    defer posts.deinit();
-    try posts.writePost();
+    var posts = try Posts.init(gpa, io, "posts");
+    defer posts.deinit(gpa);
+    try posts.writePost(gpa, io);
 
-    const feed_path = try fs.path.join(allocator, &[_][]const u8{ "docs", "feed.xml" });
-    var atom_feed = try Atom.init(allocator, feed_path);
-    try atom_feed.generate(posts);
-    defer atom_feed.deinit();
+    const feed_path = try Io.Dir.path.join(gpa, &.{ "docs", "feed.xml" });
+    defer gpa.free(feed_path);
+    var atom_feed = try Atom.init(gpa, io, feed_path);
+    defer atom_feed.deinit(io);
+    try atom_feed.generate(io, &posts);
 
-    fs.cwd().deleteFile(index_path) catch |err| switch (err) {
-        error.FileNotFound => {},
-        else => return err,
-    };
-    _ = try fs.cwd().createFile(index_path, .{});
-    var index_file = try fs.cwd().openFile(index_path, .{ .mode = .write_only });
-    defer index_file.close();
-    std.debug.print("[ ] creating main index: {s}\n", .{index_path});
+    var index_file = try cwd.createFile(io, index_path, .{});
+    defer index_file.close(io);
+    log.info("creating main index: {s}", .{index_path});
 
-    try partials.writeHeader(index_file, true, "Blog: Hong Shick Pak");
-    try posts.writeIndex(index_file);
-    try partials.writeFooter(index_file, true);
+    var buf: [4096]u8 = undefined;
+    var writer = index_file.writer(io, &buf);
+    try partials.writeHeader(&writer.interface, true, "Blog: Hong Shick Pak");
+    try posts.writeIndex(&writer.interface);
+    try partials.writeFooter(&writer.interface, true);
+    try writer.interface.flush();
+}
+
+test {
+    _ = @import("markdown.zig");
+    _ = @import("Posts.zig");
+    _ = @import("Atom.zig");
+    _ = @import("time.zig");
+    _ = @import("partials.zig");
 }

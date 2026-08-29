@@ -2,25 +2,11 @@
     .name = .hspakdev,
     .version = "0.0.0",
     .fingerprint = 0x16c9a5f872995a59,
-    .minimum_zig_version = "0.14.0",
-
-    // This field is optional.
-    // Each dependency must either provide a `url` and `hash`, or a `path`.
-    // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
-    // Once all dependencies are fetched, `zig build` no longer requires
-    // internet connectivity.
-    .dependencies = .{
-        .koino = .{
-            .url = "https://github.com/kivikakk/koino/archive/912f4bd94b88ea35dfb30d2a463f3005737dab83.tar.gz",
-            .hash = "koino-0.1.0-S9LuWkyKAgClsJzMja-fA0VswI6ygjvIXPstcnpTGknb",
-        },
-    },
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{},
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        // For example...
-        //"LICENSE",
-        //"README.md",
     },
 }
