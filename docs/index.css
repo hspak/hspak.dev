@@ -1,9 +1,10 @@
+/* Keep the fallback for this navigation if a font arrives too late to avoid a visible swap. */
 @font-face {
     font-family: "et-book";
     src: url("fonts/et-book/et-book-roman.woff2") format("woff2");
     font-weight: normal;
     font-style: normal;
-    font-display: swap;
+    font-display: optional;
 }
 
 @font-face {
@@ -11,7 +12,7 @@
     src: url("fonts/et-book/et-book-italic.woff2") format("woff2");
     font-weight: normal;
     font-style: italic;
-    font-display: swap;
+    font-display: optional;
 }
 
 @font-face {
@@ -19,7 +20,7 @@
     src: url("fonts/et-book/et-book-bold.woff2") format("woff2");
     font-weight: bold;
     font-style: normal;
-    font-display: swap;
+    font-display: optional;
 }
 
 @font-face {
@@ -27,7 +28,7 @@
     src: url("fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
-    font-display: swap;
+    font-display: optional;
 }
 
 @font-face {
@@ -35,7 +36,7 @@
     src: url("fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2") format("woff2");
     font-weight: 600 700;
     font-style: normal;
-    font-display: swap;
+    font-display: optional;
 }
 
 :root {
