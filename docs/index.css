@@ -52,10 +52,18 @@
     --fg: light-dark(var(--ink), var(--paper));
     --muted: light-dark(var(--sage), var(--mist));
     --accent: var(--oxide);
+    --code-on-dark: #E3BA72;
     --font-body: "et-book", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
     --font-title: "IBM Plex Sans Condensed", "Avenir Next Condensed", "Arial Narrow", sans-serif;
     --font-mono: ui-monospace, "Iosevka", "Hack", "Liberation Mono", monospace;
     color-scheme: light dark;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:focus,
+:focus-visible,
+:target {
+    outline: none;
 }
 
 /* Unchecked follows the OS; checked (or .theme-invert) inverts it. */
@@ -133,10 +141,12 @@ blockquote {
 
 code {
     font-family: var(--font-mono);
-    font-size: 0.9em;
+    font-size: 0.55em;
+    vertical-align: 1px;
+    color: light-dark(var(--oxide-deep), var(--code-on-dark));
     background: var(--line);
     border-radius: 4px;
-    padding: 0 2px 0 2px;
+    padding: 1px 2px 1px 2px;
 }
 
 pre > code {
@@ -148,7 +158,7 @@ pre > code {
 pre {
     font-family: var(--font-mono);
     background: light-dark(var(--ink), var(--gutter));
-    color: var(--paper);
+    color: var(--code-on-dark);
     padding: 1em;
     margin: 0 1em 0 1em;
     overflow: auto;
@@ -204,6 +214,79 @@ pre {
     padding-top: 1em;
 }
 
+.body img,
+.body video {
+    display: block;
+    max-width: 90%;
+    height: auto;
+    margin: 0 auto;
+    transform: translateX(-2%);
+}
+
+.body img[src*="/thumbnails/"],
+.body video {
+    filter:
+        drop-shadow(0 1px 2px light-dark(rgb(26 22 20 / 48%), rgb(0 0 0 / 65%)))
+        drop-shadow(0 4px 8px light-dark(rgb(26 22 20 / 28%), rgb(0 0 0 / 30%)));
+}
+
+.body figure {
+    width: fit-content;
+    max-width: 90%;
+    margin: 1em auto;
+    transform: translateX(-2%);
+}
+
+.body figure > img,
+.body figure > a > img,
+.body figure > video {
+    max-width: 100%;
+    transform: none;
+}
+
+.body figcaption {
+    color: light-dark(#666, #aaa);
+    font-size: 0.85em;
+    text-align: center;
+    margin-top: 0.4em;
+    overflow-wrap: anywhere;
+}
+
+.footnotes {
+    margin-top: 2em;
+    border-top: 1px solid var(--line);
+    padding-top: 0.5em;
+    color: var(--muted);
+    font-size: 0.85em;
+}
+
+.footnotes > ol {
+    padding-left: 1.5em;
+}
+
+.footnotes > ol > li {
+    margin-bottom: 1em;
+    scroll-margin-top: 1em;
+}
+
+.footnote-ref {
+    font-size: 0.75em;
+    line-height: 0;
+}
+
+.footnote-ref a {
+    padding: 0 0.15em;
+    scroll-margin-top: 4em;
+}
+
+.footnote-backlinks {
+    white-space: nowrap;
+}
+
+.footnote-backlinks a {
+    padding: 0.15em 0.25em;
+}
+
 .footer {
     padding-top: 0.75em;
 }
@@ -238,12 +321,6 @@ label[for="theme"] {
 
 label[for="theme"]:hover {
     color: var(--fg);
-}
-
-body:has(#theme:focus-visible) label[for="theme"] {
-    color: var(--fg);
-    outline: 1px solid var(--accent);
-    outline-offset: 2px;
 }
 
 label[for="theme"] [aria-hidden] {

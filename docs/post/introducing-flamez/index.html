@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Introducing Flamez</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta name="color-scheme" content="light dark">
+    <meta name="referrer" content="strict-origin">
+    <meta name="author" content="Hong Shick Pak">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">
+    <meta name="description" content="Blog of Hong Shick Pak">
+    <meta property="og:url" content="https://hspak.dev">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Hspak">
+    <meta property="og:title" content="Hspak">
+    <meta property="og:description" content="Blog of Hong Shick Pak">
+    <meta property="twitter:creator" content="@hspasta">
+    <link rel="canonical" href="https://hspak.dev/">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="preload" href="/fonts/et-book/et-book-roman.woff2" as="font" type="font/woff2">
+    <link rel="stylesheet" href="/index.css">
+    <script src="/theme.js"></script>
+  </head>
+  <body>
+    <input type="checkbox" id="theme">
+    <label for="theme" title="Toggle color scheme"><span aria-hidden="true">◐</span><span>Toggle color scheme</span></label>
+    <div class="outer">
+    <div class="container">
+      <div class="block">
+      <a href="/"><h1>Blog</h1></a>
+      </div>
+      <div class="block">
+        <h2>Introducing Flamez</h2>
+        <div class="date">Sep 6, 2026 </div>
+        <div class="body">
+<p>I saw a tweet somewhere that pointed to <a href="https://danielchasehooper.com/posts/syscall-build-snooping/">Daniel
+Hooper's</a> build
+time visualizer. He's got a callout at the end to try it, but I honestly don't
+have any sufficiently large projects where running this would be interesting and
+didn't want to bother asking for access. This project obviously takes
+inspiration from the original!</p>
+<p>At the same time, I was playing around with <a href="https://www.clayui.com/">ClayUI</a> +
+<a href="https://www.raylib.com/">raylib</a> combo and figured I'd could see how far
+gpt-5.6 sol could go in building one for me. It basically built it, though not
+quite in one shot. I just guided it to use eBPF for linux and let it figure
+everything else out. I knew just enough about eBPF that it should have
+sufficient access to all the data we need to build this GUI, but nothing else.
+Majority of the additional prompting was for:</p>
+<ul>
+<li>Improving visuals</li>
+<li>Improving performance</li>
+<li>A few bugs</li>
+</ul>
+<p>The more I knew exactly what I wanted, the better sol would perform in general.
+Mod one really weird bug<sup class="footnote-ref"><a id="fnref-post-8-1-1" href="#fn-post-8-1" role="doc-noteref" aria-label="Footnote 1">1</a></sup>, it was actually quite smooth sailing.</p>
+<figure>
+<video autoplay loop muted playsinline src="/post/introducing-flamez/assets/video-self.mp4" aria-label="building-self" title="zig build for self"><a href="/post/introducing-flamez/assets/video-self.mp4">building-self</a></video>
+<figcaption>zig build for self</figcaption>
+</figure>
+<p>I also asked for these features so that maybe this tool could be useful one day
+(but really this is just a for fun vibe coded project):</p>
+<ul>
+<li><strong>Timeline zoom/keyboard/mouse support</strong>: easily zoom in and out with
+<code>ctrl+(mouse wheel)</code> or <code>ctrl+-/ctrl+=</code> (to reset: <code>ctrl+0</code>)</li>
+<li><strong>Thread CPU usage</strong>: with just the parent/leaf bars, we need to guess why the
+parent node is &quot;idle&quot;. Seeing the CPU usage per bar at least lets us
+disambiguate I/O time with CPU time (e.g if the parent process is performing
+work in a thread pool vs being blocked by I/O).</li>
+<li><strong>Detailed pane</strong>: this shows the exact command and args passed, it also follows
+<code>exec</code>'s so we can see what the original command was before the process got taken
+over by another command.</li>
+<li><strong>Import/export</strong>: the entire trace data can be exported (and imported) via a
+single JSON file</li>
+<li><strong>Anylsis mode</strong>: a lossy conversion of the trace file ideally fit for agents to
+troubleshoot any build slowdowns faster, though haven't seen it be that useful
+yet. (Without actual integration into build tools, <code>flamez</code> will never have the
+sufficient context to build a real DAG. It's hueristics all the way down.)</li>
+</ul>
+<p>Some random builds for fun (these are fully collapsed, these are run on a
+32-core machine so traces get <em>deep</em>):</p>
+<figure>
+<a href="/post/introducing-flamez/assets/flamez-llama-cpp.png"><img src="/post/introducing-flamez/thumbnails/flamez-llama-cpp.png" alt="building-llama-cpp-vulkan" title="llama.cpp (vulkan)" /></a>
+<figcaption>llama.cpp (vulkan)</figcaption>
+</figure>
+<figure>
+<a href="/post/introducing-flamez/assets/flamez-ghostty.png"><img src="/post/introducing-flamez/thumbnails/flamez-ghostty.png" alt="building-ghostty" title="ghostty (debug)" /></a>
+<figcaption>ghostty (debug)</figcaption>
+</figure>
+<figure>
+<a href="/post/introducing-flamez/assets/flamez-ghostty-detailed.png"><img src="/post/introducing-flamez/thumbnails/flamez-ghostty-detailed.png" alt="building-ghostty-detailed" title="ghostty
+detailed pane" /></a>
+<figcaption>ghostty
+detailed pane</figcaption>
+</figure>
+<p>It even supports macOS. I don't know anything about the underlying APIs used,
+though supposedly in macOS 27, there's a better API being released, hence the
+&quot;best effort&quot; label for now:</p>
+<figure>
+<a href="/post/introducing-flamez/assets/flamez-macos.png"><img src="/post/introducing-flamez/thumbnails/flamez-macos.png" alt="building-self-macos" title="flamez macos" /></a>
+<figcaption>flamez macos</figcaption>
+</figure>
+<figure>
+<a href="/post/introducing-flamez/assets/flamez-macos-detailed.png"><img src="/post/introducing-flamez/thumbnails/flamez-macos-detailed.png" alt="building-self-macos-detailed" title="flamez macos" /></a>
+<figcaption>flamez macos</figcaption>
+</figure>
+<p>After becoming a father this year, it's amazing I can still work on these side
+projects (and actually finish them). Queuing up a bunch of work and coming back
+to seeing your asks mostly met is honestly a big hit of dompamine.</p>
+<p><a href="https://github.com/hspak/flamez">Source</a></p>
+<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">
+<ol>
+<li id="fn-post-8-1" tabindex="-1">
+<p>In KDE, the dock will display a volume icon if that window is playing
+sound. I had helium (chromium-based browser) playing a video and noticed
+that flamez was also getting the volume icon... Something in KDE was saying that
+<code>helium app_id == flamez app_id</code> which is obviously false. I checked that helium
+properly sets the <code>app_id</code> in wayland. Flamez did not have an <code>app_id</code> set
+though. And it turns out there's some bug somewhere in the pipewire/KDE stack
+that is causing pipewire to see helium's <code>app_id</code> as <code>&quot;&quot;</code>. Flamez' <code>app_id</code> was
+also <code>&quot;&quot;</code> because it didn't have one. So due to <code>&quot;&quot; == &quot;&quot;</code>, that bad volume
+association bug happened. Ideally, I'd submit a bug report to KDE, but I don't
+know enough of the problem to write a coherent bug report. The fix for flamez
+also required a
+<a href="https://github.com/hspak/flamez/commit/1701f8f2f5c86c77ee40a9a4d7c04c6c75775609">patch</a>
+to raylib. It's wayland GLFW backend currently resets all window hints and
+doesn't allow setting hints before the window gets drawn. Raylib is vendored in
+this project, so I just added a small workaround (too hacky to upstream).&#160;<span class="footnote-backlinks"><a href="#fnref-post-8-1-1" role="doc-backlink" aria-label="Back to reference 1 of footnote 1">↩</a></span></p>
+</li>
+</ol>
+</section>
+        </div>
+      </div>      <div class="block">
+        <div class="footer">
+          <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+</html>

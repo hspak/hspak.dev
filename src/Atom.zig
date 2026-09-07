@@ -7,19 +7,30 @@ const Writer = Io.Writer;
 const Posts = @import("Posts.zig");
 const time = @import("time.zig");
 
-const log = std.log.scoped(.atom);
-
 feed: Writer.Allocating,
 output_file: Io.File,
 
 const Atom = @This();
+const log = std.log.scoped(.atom);
 
-/// Create `output_path` and prepare an empty feed.
-/// Caller owns the result and must call `deinit`.
-pub fn init(gpa: Allocator, io: Io, output_path: []const u8) !Atom {
-    const file = try Io.Dir.cwd().createFile(io, output_path, .{});
+pub const InitError = Io.File.OpenError;
+pub const GenerateError = Allocator.Error || Writer.Error || Io.File.Writer.Error || Posts.Error;
+
+/// Initialize fresh storage, creating `output_path` and preparing an empty feed.
+/// Pair success with `deinit(io)`. On error, no resources are retained.
+pub fn init(
+    atom: *Atom,
+    gpa: Allocator,
+    io: Io,
+    output_path: []const u8,
+) InitError!void {
+    const file = try Io.Dir.cwd().createFile(
+        io,
+        output_path,
+        .{},
+    );
     errdefer file.close(io);
-    return .{
+    atom.* = .{
         .feed = .init(gpa),
         .output_file = file,
     };
@@ -33,16 +44,27 @@ pub fn deinit(atom: *Atom, io: Io) void {
 }
 
 /// Write the Atom XML for `posts` to the file opened in `init`.
-pub fn generate(atom: *Atom, io: Io, posts: *const Posts) !void {
-    try atom.header(posts);
+pub fn generate(
+    atom: *Atom,
+    io: Io,
+    posts: *const Posts,
+) GenerateError!void {
+    try atom.header(io, posts);
     try atom.addEntries(posts);
     try atom.footer();
     try atom.output_file.writeStreamingAll(io, atom.feed.writer.buffered());
 }
 
-fn header(atom: *Atom, posts: *const Posts) !void {
+fn header(
+    atom: *Atom,
+    io: Io,
+    posts: *const Posts,
+) !void {
     const w = &atom.feed.writer;
-    const timestamp = try posts.latestUpdatedAt();
+    const timestamp = if (posts.list.items.len == 0)
+        Io.Clock.real.now(io)
+    else
+        try posts.latestUpdatedAt();
     const formatted_timestamp = try time.formatTimestamp(atom.feed.allocator, timestamp);
     defer atom.feed.allocator.free(formatted_timestamp);
     try w.print(
@@ -66,7 +88,11 @@ fn addEntries(atom: *Atom, posts: *const Posts) !void {
         try w.writeAll("<entry>\n");
         try w.print("  <title>{s}</title>\n", .{item.meta.title});
         try w.print("  <published>{s}</published>\n", .{item.meta.created_at});
-        if (!std.mem.eql(u8, item.meta.updated_at, Posts.placeholder_text)) {
+        if (!std.mem.eql(
+            u8,
+            item.meta.updated_at,
+            Posts.placeholder_text,
+        )) {
             try w.print("  <updated>{s}</updated>\n", .{item.meta.updated_at});
         } else {
             try w.print("  <updated>{s}</updated>\n", .{item.meta.created_at});
@@ -76,7 +102,11 @@ fn addEntries(atom: *Atom, posts: *const Posts) !void {
         , .{item.meta.name});
         try w.print("\n  <id>https://hspak.dev/post/{s}/</id>\n", .{item.meta.name});
         try w.writeAll("  <content type=\"html\">\n    ");
-        try writeXmlEscaped(w, item.parsed_html);
+        try writeContent(
+            w,
+            item.parsed_html,
+            item.meta.name,
+        );
         try w.writeAll("  </content>");
         try w.writeAll("\n</entry>\n");
     }
@@ -84,6 +114,26 @@ fn addEntries(atom: *Atom, posts: *const Posts) !void {
 
 fn footer(atom: *Atom) !void {
     try atom.feed.writer.writeAll("</feed>\n");
+}
+
+fn writeContent(
+    w: *Writer,
+    html_body: []const u8,
+    post_name: []const u8,
+) Writer.Error!void {
+    var rest = html_body;
+    // Generated HTML uses double-quoted attributes; quoted text is already HTML-escaped.
+    // Feed readers need the published page URL to resolve fragment navigation.
+    const prefix = "href=\"#";
+    while (std.mem.indexOf(u8, rest, prefix)) |index| {
+        const fragment = index + prefix.len - 1;
+        try writeXmlEscaped(w, rest[0..fragment]);
+        try w.writeAll("https://hspak.dev/post/");
+        try writeXmlEscaped(w, post_name);
+        try w.writeByte('/');
+        rest = rest[fragment..];
+    }
+    try writeXmlEscaped(w, rest);
 }
 
 fn writeXmlEscaped(w: *Writer, html_body: []const u8) Writer.Error!void {
@@ -96,4 +146,24 @@ fn writeXmlEscaped(w: *Writer, html_body: []const u8) Writer.Error!void {
             else => try w.writeByte(char),
         }
     }
+}
+
+test "feed fragment links target the post while escaped code stays literal" {
+    var output: Writer.Allocating = .init(std.testing.allocator);
+    defer output.deinit();
+    try writeContent(
+        &output.writer,
+        "<a href=\"#fn-post-42-1\">1</a> <a href=\"#fnref-post-42-1-1\">↩</a> " ++
+            "<a href=\"#section\">Section</a> <a href=\"https://example.com/#part\">Other</a> " ++
+            "<code>href=&quot;#literal&quot;</code>",
+        "example",
+    );
+    try std.testing.expectEqualStrings(
+        "&lt;a href=&quot;https://hspak.dev/post/example/#fn-post-42-1&quot;&gt;1&lt;/a&gt; " ++
+            "&lt;a href=&quot;https://hspak.dev/post/example/#fnref-post-42-1-1&quot;&gt;↩&lt;/a&gt; " ++
+            "&lt;a href=&quot;https://hspak.dev/post/example/#section&quot;&gt;Section&lt;/a&gt; " ++
+            "&lt;a href=&quot;https://example.com/#part&quot;&gt;Other&lt;/a&gt; " ++
+            "&lt;code&gt;href=&amp;quot;#literal&amp;quot;&lt;/code&gt;",
+        output.written(),
+    );
 }

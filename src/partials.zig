@@ -6,7 +6,11 @@ const Writer = std.Io.Writer;
 const log = std.log.scoped(.partials);
 
 /// Write the document head and site header.
-pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!void {
+pub fn writeHeader(
+    w: *Writer,
+    is_index: bool,
+    title: []const u8,
+) Writer.Error!void {
     @setEvalBranchQuota(3000);
     const header = if (is_index)
         \\<div class="indexHeader">

@@ -6,18 +6,22 @@ const Timestamp = std.Io.Timestamp;
 
 const log = std.log.scoped(.time);
 
-/// Format `timestamp` as `Month D, YYYY`. Caller owns the returned slice.
+/// Format `timestamp` as `Month D, YYYY`. Caller frees the returned slice with `gpa`.
 pub fn formatTimestamp(gpa: Allocator, timestamp: Timestamp) Allocator.Error![]const u8 {
     const secs: u64 = @intCast(@max(timestamp.toSeconds(), 0));
     const epoch: std.time.epoch.EpochSeconds = .{ .secs = secs };
     const day = epoch.getEpochDay();
     const year_day = day.calculateYearDay();
     const month_day = year_day.calculateMonthDay();
-    return std.fmt.allocPrint(gpa, "{s} {d}, {d}", .{
-        formatMonth(month_day.month),
-        month_day.day_index + 1,
-        year_day.year,
-    });
+    return std.fmt.allocPrint(
+        gpa,
+        "{s} {d}, {d}",
+        .{
+            formatMonth(month_day.month),
+            month_day.day_index + 1,
+            year_day.year,
+        },
+    );
 }
 
 fn formatMonth(month: std.time.epoch.Month) []const u8 {

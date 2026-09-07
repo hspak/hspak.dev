@@ -2,11 +2,115 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 <title>Hong's Blog</title>
 <link href="https://hspak.dev/"/>
-<updated>June 12, 2025</updated>
+<updated>September 7, 2026</updated>
 <author>
   <name>Hong Shick Pak</name>
 </author>
 <id>https://hspak.dev/atom.xml</id><entry>
+  <title>Introducing Flamez</title>
+  <published>Sep 6, 2026</published>
+  <updated>Sep 6, 2026</updated>
+  <link href="https://hspak.dev/post/introducing-flamez/" type="text/html"/>
+  <id>https://hspak.dev/post/introducing-flamez/</id>
+  <content type="html">
+    &lt;p&gt;I saw a tweet somewhere that pointed to &lt;a href=&quot;https://danielchasehooper.com/posts/syscall-build-snooping/&quot;&gt;Daniel
+Hooper's&lt;/a&gt; build
+time visualizer. He's got a callout at the end to try it, but I honestly don't
+have any sufficiently large projects where running this would be interesting and
+didn't want to bother asking for access. This project obviously takes
+inspiration from the original!&lt;/p&gt;
+&lt;p&gt;At the same time, I was playing around with &lt;a href=&quot;https://www.clayui.com/&quot;&gt;ClayUI&lt;/a&gt; +
+&lt;a href=&quot;https://www.raylib.com/&quot;&gt;raylib&lt;/a&gt; combo and figured I'd could see how far
+gpt-5.6 sol could go in building one for me. It basically built it, though not
+quite in one shot. I just guided it to use eBPF for linux and let it figure
+everything else out. I knew just enough about eBPF that it should have
+sufficient access to all the data we need to build this GUI, but nothing else.
+Majority of the additional prompting was for:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Improving visuals&lt;/li&gt;
+&lt;li&gt;Improving performance&lt;/li&gt;
+&lt;li&gt;A few bugs&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The more I knew exactly what I wanted, the better sol would perform in general.
+Mod one really weird bug&lt;sup class=&quot;footnote-ref&quot;&gt;&lt;a id=&quot;fnref-post-8-1-1&quot; href=&quot;https://hspak.dev/post/introducing-flamez/#fn-post-8-1&quot; role=&quot;doc-noteref&quot; aria-label=&quot;Footnote 1&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;, it was actually quite smooth sailing.&lt;/p&gt;
+&lt;figure&gt;
+&lt;video autoplay loop muted playsinline src=&quot;/post/introducing-flamez/assets/video-self.mp4&quot; aria-label=&quot;building-self&quot; title=&quot;zig build for self&quot;&gt;&lt;a href=&quot;/post/introducing-flamez/assets/video-self.mp4&quot;&gt;building-self&lt;/a&gt;&lt;/video&gt;
+&lt;figcaption&gt;zig build for self&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;I also asked for these features so that maybe this tool could be useful one day
+(but really this is just a for fun vibe coded project):&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Timeline zoom/keyboard/mouse support&lt;/strong&gt;: easily zoom in and out with
+&lt;code&gt;ctrl+(mouse wheel)&lt;/code&gt; or &lt;code&gt;ctrl+-/ctrl+=&lt;/code&gt; (to reset: &lt;code&gt;ctrl+0&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Thread CPU usage&lt;/strong&gt;: with just the parent/leaf bars, we need to guess why the
+parent node is &amp;quot;idle&amp;quot;. Seeing the CPU usage per bar at least lets us
+disambiguate I/O time with CPU time (e.g if the parent process is performing
+work in a thread pool vs being blocked by I/O).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Detailed pane&lt;/strong&gt;: this shows the exact command and args passed, it also follows
+&lt;code&gt;exec&lt;/code&gt;'s so we can see what the original command was before the process got taken
+over by another command.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Import/export&lt;/strong&gt;: the entire trace data can be exported (and imported) via a
+single JSON file&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Anylsis mode&lt;/strong&gt;: a lossy conversion of the trace file ideally fit for agents to
+troubleshoot any build slowdowns faster, though haven't seen it be that useful
+yet. (Without actual integration into build tools, &lt;code&gt;flamez&lt;/code&gt; will never have the
+sufficient context to build a real DAG. It's hueristics all the way down.)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Some random builds for fun (these are fully collapsed, these are run on a
+32-core machine so traces get &lt;em&gt;deep&lt;/em&gt;):&lt;/p&gt;
+&lt;figure&gt;
+&lt;a href=&quot;/post/introducing-flamez/assets/flamez-llama-cpp.png&quot;&gt;&lt;img src=&quot;/post/introducing-flamez/thumbnails/flamez-llama-cpp.png&quot; alt=&quot;building-llama-cpp-vulkan&quot; title=&quot;llama.cpp (vulkan)&quot; /&gt;&lt;/a&gt;
+&lt;figcaption&gt;llama.cpp (vulkan)&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;figure&gt;
+&lt;a href=&quot;/post/introducing-flamez/assets/flamez-ghostty.png&quot;&gt;&lt;img src=&quot;/post/introducing-flamez/thumbnails/flamez-ghostty.png&quot; alt=&quot;building-ghostty&quot; title=&quot;ghostty (debug)&quot; /&gt;&lt;/a&gt;
+&lt;figcaption&gt;ghostty (debug)&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;figure&gt;
+&lt;a href=&quot;/post/introducing-flamez/assets/flamez-ghostty-detailed.png&quot;&gt;&lt;img src=&quot;/post/introducing-flamez/thumbnails/flamez-ghostty-detailed.png&quot; alt=&quot;building-ghostty-detailed&quot; title=&quot;ghostty
+detailed pane&quot; /&gt;&lt;/a&gt;
+&lt;figcaption&gt;ghostty
+detailed pane&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;It even supports macOS. I don't know anything about the underlying APIs used,
+though supposedly in macOS 27, there's a better API being released, hence the
+&amp;quot;best effort&amp;quot; label for now:&lt;/p&gt;
+&lt;figure&gt;
+&lt;a href=&quot;/post/introducing-flamez/assets/flamez-macos.png&quot;&gt;&lt;img src=&quot;/post/introducing-flamez/thumbnails/flamez-macos.png&quot; alt=&quot;building-self-macos&quot; title=&quot;flamez macos&quot; /&gt;&lt;/a&gt;
+&lt;figcaption&gt;flamez macos&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;figure&gt;
+&lt;a href=&quot;/post/introducing-flamez/assets/flamez-macos-detailed.png&quot;&gt;&lt;img src=&quot;/post/introducing-flamez/thumbnails/flamez-macos-detailed.png&quot; alt=&quot;building-self-macos-detailed&quot; title=&quot;flamez macos&quot; /&gt;&lt;/a&gt;
+&lt;figcaption&gt;flamez macos&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;After becoming a father this year, it's amazing I can still work on these side
+projects (and actually finish them). Queuing up a bunch of work and coming back
+to seeing your asks mostly met is honestly a big hit of dompamine.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://github.com/hspak/flamez&quot;&gt;Source&lt;/a&gt;&lt;/p&gt;
+&lt;section class=&quot;footnotes&quot; role=&quot;doc-endnotes&quot; aria-label=&quot;Footnotes&quot;&gt;
+&lt;ol&gt;
+&lt;li id=&quot;fn-post-8-1&quot; tabindex=&quot;-1&quot;&gt;
+&lt;p&gt;In KDE, the dock will display a volume icon if that window is playing
+sound. I had helium (chromium-based browser) playing a video and noticed
+that flamez was also getting the volume icon... Something in KDE was saying that
+&lt;code&gt;helium app_id == flamez app_id&lt;/code&gt; which is obviously false. I checked that helium
+properly sets the &lt;code&gt;app_id&lt;/code&gt; in wayland. Flamez did not have an &lt;code&gt;app_id&lt;/code&gt; set
+though. And it turns out there's some bug somewhere in the pipewire/KDE stack
+that is causing pipewire to see helium's &lt;code&gt;app_id&lt;/code&gt; as &lt;code&gt;&amp;quot;&amp;quot;&lt;/code&gt;. Flamez' &lt;code&gt;app_id&lt;/code&gt; was
+also &lt;code&gt;&amp;quot;&amp;quot;&lt;/code&gt; because it didn't have one. So due to &lt;code&gt;&amp;quot;&amp;quot; == &amp;quot;&amp;quot;&lt;/code&gt;, that bad volume
+association bug happened. Ideally, I'd submit a bug report to KDE, but I don't
+know enough of the problem to write a coherent bug report. The fix for flamez
+also required a
+&lt;a href=&quot;https://github.com/hspak/flamez/commit/1701f8f2f5c86c77ee40a9a4d7c04c6c75775609&quot;&gt;patch&lt;/a&gt;
+to raylib. It's wayland GLFW backend currently resets all window hints and
+doesn't allow setting hints before the window gets drawn. Raylib is vendored in
+this project, so I just added a small workaround (too hacky to upstream).&amp;#160;&lt;span class=&quot;footnote-backlinks&quot;&gt;&lt;a href=&quot;https://hspak.dev/post/introducing-flamez/#fnref-post-8-1-1&quot; role=&quot;doc-backlink&quot; aria-label=&quot;Back to reference 1 of footnote 1&quot;&gt;↩&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/section&gt;
+  </content>
+</entry>
+<entry>
   <title>Why is CI so slow?</title>
   <published>Oct 26, 2024</published>
   <updated>Oct 26, 2024</updated>
