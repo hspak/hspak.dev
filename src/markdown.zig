@@ -5,8 +5,6 @@ const Allocator = std.mem.Allocator;
 const Writer = std.Io.Writer;
 const ascii = std.ascii;
 
-const log = std.log.scoped(.markdown);
-
 /// URL strings are borrowed for the duration of `toHtmlWithOptions`.
 pub const Options = struct {
     /// Public URL of the post's media directory, including its trailing slash.
@@ -25,11 +23,7 @@ pub const Options = struct {
 /// Convert markdown `source` to HTML. The returned slice is allocated with
 /// `gpa`; caller must free it.
 pub fn toHtml(gpa: Allocator, source: []const u8) Allocator.Error![]const u8 {
-    return toHtmlWithOptions(
-        gpa,
-        source,
-        .{},
-    );
+    return toHtmlWithOptions(gpa, source, .{});
 }
 
 /// Convert borrowed markdown and URL options to owned HTML. Caller must free the
@@ -42,30 +36,13 @@ pub fn toHtmlWithOptions(
     var arena: std.heap.ArenaAllocator = .init(gpa);
     defer arena.deinit();
     var footnotes: Footnotes = .{};
-    const blocks = try parse(
-        arena.allocator(),
-        source,
-        &footnotes,
-    );
-    try footnotes.prepare(
-        arena.allocator(),
-        blocks,
-        options,
-    );
+    const blocks = try parse(arena.allocator(), source, &footnotes);
+    try footnotes.prepare(arena.allocator(), blocks, options);
 
     var aw: Writer.Allocating = .init(gpa);
     errdefer aw.deinit();
-    renderBlocks(
-        &aw.writer,
-        blocks,
-        options,
-        &footnotes,
-    ) catch return error.OutOfMemory;
-    renderFootnotes(
-        &aw.writer,
-        &footnotes,
-        options,
-    ) catch return error.OutOfMemory;
+    renderBlocks(&aw.writer, blocks, options, &footnotes) catch return error.OutOfMemory;
+    renderFootnotes(&aw.writer, &footnotes, options) catch return error.OutOfMemory;
     return aw.toOwnedSlice();
 }
 
@@ -173,40 +150,21 @@ const Footnotes = struct {
         var discard: Writer.Discarding = .init(&buffer);
         // Use the inline renderer so escapes, code, and link labels have identical semantics.
         // Count references inside notes too before emitting any of their return links.
-        renderBlocks(
-            &discard.writer,
-            blocks,
-            options,
-            notes,
-        ) catch unreachable;
+        // The discarding writer cannot fail.
+        renderBlocks(&discard.writer, blocks, options, notes) catch unreachable;
         var index: usize = 0;
         while (index < notes.order.items.len) : (index += 1) {
             const definition = notes.definitions.items[notes.order.items[index]];
-            renderBlocks(
-                &discard.writer,
-                definition.blocks,
-                options,
-                notes,
-            ) catch unreachable;
+            renderBlocks(&discard.writer, definition.blocks, options, notes) catch unreachable;
         }
         notes.collecting = false;
     }
 };
 
-fn parse(
-    arena: Allocator,
-    source: []const u8,
-    footnotes: *Footnotes,
-) Allocator.Error![]Block {
+fn parse(arena: Allocator, source: []const u8, footnotes: *Footnotes) Allocator.Error![]Block {
     const lines = try splitLines(arena, source);
     var i: usize = 0;
-    return parseBlocks(
-        arena,
-        lines,
-        &i,
-        lines.len,
-        footnotes,
-    );
+    return parseBlocks(arena, lines, &i, lines.len, footnotes);
 }
 
 fn splitLines(arena: Allocator, source: []const u8) Allocator.Error![]Line {
@@ -262,24 +220,11 @@ fn parseBlocks(
             continue;
         }
         if (parseFence(line)) |fence| {
-            try blocks.append(arena, .{ .code = try parseCode(
-                arena,
-                lines,
-                i,
-                end,
-                fence,
-            ) });
+            try blocks.append(arena, .{ .code = try parseCode(arena, lines, i, end, fence) });
             continue;
         }
         if (footnoteMarker(line)) |marker| {
-            try parseFootnote(
-                arena,
-                lines,
-                i,
-                end,
-                marker,
-                footnotes,
-            );
+            try parseFootnote(arena, lines, i, end, marker, footnotes);
             continue;
         }
         if (isThematicBreak(line)) {
@@ -293,31 +238,14 @@ fn parseBlocks(
             continue;
         }
         if (isQuote(line)) {
-            try blocks.append(arena, .{ .quote = try parseQuote(
-                arena,
-                lines,
-                i,
-                end,
-                footnotes,
-            ) });
+            try blocks.append(arena, .{ .quote = try parseQuote(arena, lines, i, end, footnotes) });
             continue;
         }
         if (parseMarker(line) != null) {
-            try blocks.append(arena, .{ .list = try parseList(
-                arena,
-                lines,
-                i,
-                end,
-                footnotes,
-            ) });
+            try blocks.append(arena, .{ .list = try parseList(arena, lines, i, end, footnotes) });
             continue;
         }
-        const text = try parseParagraph(
-            arena,
-            lines,
-            i,
-            end,
-        );
+        const text = try parseParagraph(arena, lines, i, end);
         const block: Block = if (parseFigure(text)) |media|
             .{ .figure = media }
         else
@@ -394,11 +322,7 @@ fn parseFootnote(
         };
         const line = lines[i.*];
         if (isBlank(line)) {
-            const next = nextNonBlank(
-                lines,
-                i.* + 1,
-                end,
-            ) orelse break;
+            const next = nextNonBlank(lines, i.* + 1, end) orelse break;
             if (footnoteContinuation(lines[next]) == null) break;
             try inner.append(arena, makeLine(""));
         } else if (footnoteContinuation(line)) |continuation| {
@@ -411,13 +335,7 @@ fn parseFootnote(
         i.* += 1;
     }
     var inner_i: usize = 0;
-    const blocks = try parseBlocks(
-        arena,
-        inner.items,
-        &inner_i,
-        inner.items.len,
-        footnotes,
-    );
+    const blocks = try parseBlocks(arena, inner.items, &inner_i, inner.items.len, footnotes);
     if (!duplicate) footnotes.definitions.items[index].blocks = blocks;
 }
 
@@ -441,11 +359,7 @@ fn parseParagraph(
         if (startsContainer(line)) break;
         if (!first) try text.append(arena, '\n');
         first = false;
-        try text.appendSlice(arena, std.mem.trimEnd(
-            u8,
-            line.rest,
-            " \t",
-        ));
+        try text.appendSlice(arena, std.mem.trimEnd(u8, line.rest, " \t"));
         i.* += 1;
     }
     return text.toOwnedSlice(arena);
@@ -458,19 +372,11 @@ fn parseHeading(line: Line) ?Heading {
     while (level < rest.len and level < 6 and rest[level] == '#') level += 1;
     if (level == 0) return null;
     if (level < rest.len and rest[level] != ' ' and rest[level] != '\t') return null;
-    var text = std.mem.trim(
-        u8,
-        rest[level..],
-        " \t",
-    );
+    var text = std.mem.trim(u8, rest[level..], " \t");
     var trail = text.len;
     while (trail > 0 and text[trail - 1] == '#') trail -= 1;
     if (trail < text.len and trail > 0 and (text[trail - 1] == ' ' or text[trail - 1] == '\t')) {
-        text = std.mem.trimEnd(
-            u8,
-            text[0..trail],
-            " \t",
-        );
+        text = std.mem.trimEnd(u8, text[0..trail], " \t");
     }
     return .{ .level = level, .text = text };
 }
@@ -497,16 +403,8 @@ fn parseFence(line: Line) ?Fence {
     var fence_len: usize = 0;
     while (fence_len < rest.len and rest[fence_len] == '`') fence_len += 1;
     if (fence_len < 3) return null;
-    const info_raw = std.mem.trim(
-        u8,
-        rest[fence_len..],
-        " \t",
-    );
-    if (std.mem.indexOfScalar(
-        u8,
-        info_raw,
-        '`',
-    ) != null) return null;
+    const info_raw = std.mem.trim(u8, rest[fence_len..], " \t");
+    if (std.mem.indexOfScalar(u8, info_raw, '`') != null) return null;
     return .{
         .indent = line.indent,
         .fence_len = fence_len,
@@ -515,16 +413,8 @@ fn parseFence(line: Line) ?Fence {
 }
 
 fn firstWord(s: []const u8) []const u8 {
-    const trimmed = std.mem.trim(
-        u8,
-        s,
-        " \t",
-    );
-    if (std.mem.indexOfAny(
-        u8,
-        trimmed,
-        " \t",
-    )) |idx| return trimmed[0..idx];
+    const trimmed = std.mem.trim(u8, s, " \t");
+    if (std.mem.indexOfAny(u8, trimmed, " \t")) |idx| return trimmed[0..idx];
     return trimmed;
 }
 
@@ -557,11 +447,7 @@ fn isClosingFence(line: Line, opening: Fence) bool {
     var n: usize = 0;
     while (n < rest.len and rest[n] == '`') n += 1;
     if (n < opening.fence_len) return false;
-    return std.mem.trim(
-        u8,
-        rest[n..],
-        " \t",
-    ).len == 0;
+    return std.mem.trim(u8, rest[n..], " \t").len == 0;
 }
 
 fn stripIndent(raw: []const u8, indent: usize) []const u8 {
@@ -615,13 +501,7 @@ fn parseQuote(
         i.* += 1;
     }
     var inner_i: usize = 0;
-    return parseBlocks(
-        arena,
-        inner.items,
-        &inner_i,
-        inner.items.len,
-        footnotes,
-    );
+    return parseBlocks(arena, inner.items, &inner_i, inner.items.len, footnotes);
 }
 
 fn parseMarker(line: Line) ?Marker {
@@ -701,11 +581,7 @@ fn parseList(
         while (i.* < end) {
             const line = lines[i.*];
             if (isBlank(line)) {
-                const next = nextNonBlank(
-                    lines,
-                    i.* + 1,
-                    end,
-                );
+                const next = nextNonBlank(lines, i.* + 1, end);
                 if (next) |n| {
                     if (lineBelongsToItem(lines[n], marker)) {
                         loose = true;
@@ -758,11 +634,7 @@ fn parseList(
     };
 }
 
-fn nextNonBlank(
-    lines: []const Line,
-    start: usize,
-    end: usize,
-) ?usize {
+fn nextNonBlank(lines: []const Line, start: usize, end: usize) ?usize {
     var i = start;
     while (i < end) : (i += 1) {
         if (!isBlank(lines[i])) return i;
@@ -781,12 +653,7 @@ fn renderBlocks(
     options: Options,
     footnotes: ?*Footnotes,
 ) Writer.Error!void {
-    for (blocks) |block| try renderBlock(
-        w,
-        block,
-        options,
-        footnotes,
-    );
+    for (blocks) |block| try renderBlock(w, block, options, footnotes);
 }
 
 fn renderBlock(
@@ -798,33 +665,19 @@ fn renderBlock(
     switch (block) {
         .paragraph => |text| {
             try w.writeAll("<p>");
-            try renderInlines(
-                w,
-                text,
-                options,
-                footnotes,
-            );
+            try renderInlines(w, text, options, footnotes);
             try w.writeAll("</p>\n");
         },
         .figure => |media| {
             try w.writeAll("<figure>\n");
-            try renderMedia(
-                w,
-                media,
-                options,
-            );
+            try renderMedia(w, media, options);
             try w.writeAll("\n<figcaption>");
             try writeLinkString(w, media.link.title.?);
             try w.writeAll("</figcaption>\n</figure>\n");
         },
         .heading => |heading| {
             try w.print("<h{d}>", .{heading.level});
-            try renderInlines(
-                w,
-                heading.text,
-                options,
-                footnotes,
-            );
+            try renderInlines(w, heading.text, options, footnotes);
             try w.print("</h{d}>\n", .{heading.level});
         },
         .code => |code| {
@@ -840,30 +693,15 @@ fn renderBlock(
         },
         .quote => |inner| {
             try w.writeAll("<blockquote>\n");
-            try renderBlocks(
-                w,
-                inner,
-                options,
-                footnotes,
-            );
+            try renderBlocks(w, inner, options, footnotes);
             try w.writeAll("</blockquote>\n");
         },
-        .list => |list| try renderList(
-            w,
-            list,
-            options,
-            footnotes,
-        ),
+        .list => |list| try renderList(w, list, options, footnotes),
         .thematic_break => try w.writeAll("<hr />\n"),
     }
 }
 
-fn renderList(
-    w: *Writer,
-    list: List,
-    options: Options,
-    footnotes: ?*Footnotes,
-) Writer.Error!void {
+fn renderList(w: *Writer, list: List, options: Options, footnotes: ?*Footnotes) Writer.Error!void {
     const tag = if (list.ordered) "ol" else "ul";
     if (list.ordered and list.start != 1) {
         try w.print("<ol start=\"{d}\">\n", .{list.start});
@@ -873,21 +711,11 @@ fn renderList(
     for (list.items) |item| {
         if (list.loose) {
             try w.writeAll("<li>\n");
-            try renderBlocks(
-                w,
-                item,
-                options,
-                footnotes,
-            );
+            try renderBlocks(w, item, options, footnotes);
             try w.writeAll("</li>\n");
         } else {
             try w.writeAll("<li>");
-            try renderTightItem(
-                w,
-                item,
-                options,
-                footnotes,
-            );
+            try renderTightItem(w, item, options, footnotes);
             try w.writeAll("</li>\n");
         }
     }
@@ -905,22 +733,18 @@ fn renderTightItem(
         switch (block) {
             .paragraph => |text| {
                 if (idx != 0 and !prev_ended_with_newline) try w.writeByte('\n');
-                try renderInlines(
-                    w,
-                    text,
-                    options,
-                    footnotes,
-                );
+                try renderInlines(w, text, options, footnotes);
                 prev_ended_with_newline = false;
             },
-            else => {
+            .figure,
+            .heading,
+            .code,
+            .quote,
+            .list,
+            .thematic_break,
+            => {
                 if (idx != 0 and !prev_ended_with_newline) try w.writeByte('\n');
-                try renderBlock(
-                    w,
-                    block,
-                    options,
-                    footnotes,
-                );
+                try renderBlock(w, block, options, footnotes);
                 prev_ended_with_newline = true;
             },
         }
@@ -957,11 +781,7 @@ fn renderInlines(
         }
         if (c == '!' and i + 1 < text.len and text[i + 1] == '[') {
             if (parseMedia(text, i)) |media| {
-                try renderMedia(
-                    w,
-                    media,
-                    options,
-                );
+                try renderMedia(w, media, options);
                 i = media.end;
                 continue;
             }
@@ -969,22 +789,13 @@ fn renderInlines(
         if (c == '[') {
             if (parseInlineLink(text, i)) |link| {
                 try w.writeAll("<a href=\"");
-                try writeUrl(
-                    w,
-                    link.url,
-                    options,
-                );
+                try writeUrl(w, link.url, options);
                 try w.writeByte('"');
                 try writeTitle(w, link.title);
                 try w.writeByte('>');
                 var nested_options = options;
                 nested_options.link_images = false;
-                try renderInlines(
-                    w,
-                    link.text,
-                    nested_options,
-                    null,
-                );
+                try renderInlines(w, link.text, nested_options, null);
                 try w.writeAll("</a>");
                 i = link.end;
                 continue;
@@ -992,11 +803,7 @@ fn renderInlines(
             if (parseFootnoteReference(text, i)) |reference| {
                 const resolved = if (footnotes) |notes| notes.reference(reference.content) else null;
                 if (resolved) |found| {
-                    try renderFootnoteReference(
-                        w,
-                        found,
-                        options,
-                    );
+                    try renderFootnoteReference(w, found, options);
                 } else {
                     try writeEscaped(w, text[i..reference.end]);
                 }
@@ -1008,12 +815,7 @@ fn renderInlines(
             if (parseEmphasis(text, i)) |em| {
                 const tag: []const u8 = if (em.strong) "strong" else "em";
                 try w.print("<{s}>", .{tag});
-                try renderInlines(
-                    w,
-                    em.content,
-                    options,
-                    footnotes,
-                );
+                try renderInlines(w, em.content, options, footnotes);
                 try w.print("</{s}>", .{tag});
                 i = em.end;
                 continue;
@@ -1022,12 +824,7 @@ fn renderInlines(
         if (c == '~') {
             if (parseStrike(text, i)) |strike| {
                 try w.writeAll("<del>");
-                try renderInlines(
-                    w,
-                    strike.content,
-                    options,
-                    footnotes,
-                );
+                try renderInlines(w, strike.content, options, footnotes);
                 try w.writeAll("</del>");
                 i = strike.end;
                 continue;
@@ -1056,30 +853,16 @@ fn renderFootnoteReference(
     options: Options,
 ) Writer.Error!void {
     try w.writeAll("<sup class=\"footnote-ref\"><a id=\"");
-    try writeFootnoteId(
-        w,
-        options.footnote_id_prefix,
-        reference.number,
-        reference.occurrence,
-    );
+    try writeFootnoteId(w, options.footnote_id_prefix, reference.number, reference.occurrence);
     try w.writeAll("\" href=\"#");
-    try writeFootnoteId(
-        w,
-        options.footnote_id_prefix,
-        reference.number,
-        null,
-    );
+    try writeFootnoteId(w, options.footnote_id_prefix, reference.number, null);
     try w.print("\" role=\"doc-noteref\" aria-label=\"Footnote {d}\">{d}</a></sup>", .{
         reference.number,
         reference.number,
     });
 }
 
-fn renderFootnotes(
-    w: *Writer,
-    notes: *Footnotes,
-    options: Options,
-) Writer.Error!void {
+fn renderFootnotes(w: *Writer, notes: *Footnotes, options: Options) Writer.Error!void {
     if (notes.order.items.len == 0) return;
     try w.writeAll(
         "<section class=\"footnotes\" role=\"doc-endnotes\" aria-label=\"Footnotes\">\n<ol>\n",
@@ -1087,12 +870,7 @@ fn renderFootnotes(
     for (notes.order.items) |index| {
         const definition = notes.definitions.items[index];
         try w.writeAll("<li id=\"");
-        try writeFootnoteId(
-            w,
-            options.footnote_id_prefix,
-            definition.number,
-            null,
-        );
+        try writeFootnoteId(w, options.footnote_id_prefix, definition.number, null);
         try w.writeAll("\" tabindex=\"-1\">\n");
         const last_paragraph = if (definition.blocks.len == 0)
             null
@@ -1110,32 +888,17 @@ fn renderFootnotes(
             definition.blocks[0 .. definition.blocks.len - 1]
         else
             definition.blocks;
-        try renderBlocks(
-            w,
-            preceding_blocks,
-            options,
-            notes,
-        );
+        try renderBlocks(w, preceding_blocks, options, notes);
         try w.writeAll("<p>");
         if (last_paragraph) |text| {
-            try renderInlines(
-                w,
-                text,
-                options,
-                notes,
-            );
+            try renderInlines(w, text, options, notes);
             try w.writeAll("&#160;");
         }
         try w.writeAll("<span class=\"footnote-backlinks\">");
         for (1..definition.references + 1) |occurrence| {
             if (occurrence > 1) try w.writeByte(' ');
             try w.writeAll("<a href=\"#");
-            try writeFootnoteId(
-                w,
-                options.footnote_id_prefix,
-                definition.number,
-                occurrence,
-            );
+            try writeFootnoteId(w, options.footnote_id_prefix, definition.number, occurrence);
             try w.print(
                 "\" role=\"doc-backlink\" aria-label=\"Back to reference {d} of footnote {d}\">↩",
                 .{ occurrence, definition.number },
@@ -1148,32 +911,20 @@ fn renderFootnotes(
     try w.writeAll("</ol>\n</section>\n");
 }
 
-fn renderMedia(
-    w: *Writer,
-    media: Media,
-    options: Options,
-) Writer.Error!void {
+fn renderMedia(w: *Writer, media: Media, options: Options) Writer.Error!void {
     const link = media.link;
     if (isVideoUrl(link.url)) {
         try w.writeAll(if (media.gif)
             "<video autoplay loop muted playsinline src=\""
         else
             "<video controls preload=\"metadata\" src=\"");
-        try writeUrl(
-            w,
-            link.url,
-            options,
-        );
+        try writeUrl(w, link.url, options);
         try w.writeAll("\" aria-label=\"");
         try writeEscaped(w, link.text);
         try w.writeByte('"');
         try writeTitle(w, link.title);
         try w.writeAll("><a href=\"");
-        try writeUrl(
-            w,
-            link.url,
-            options,
-        );
+        try writeUrl(w, link.url, options);
         try w.writeAll("\">");
         try writeEscaped(w, if (link.text.len == 0) "Download video" else link.text);
         try w.writeAll("</a></video>");
@@ -1183,21 +934,13 @@ fn renderMedia(
     const link_original = has_thumbnail and options.link_images;
     if (link_original) {
         try w.writeAll("<a href=\"");
-        try writeUrl(
-            w,
-            link.url,
-            options,
-        );
+        try writeUrl(w, link.url, options);
         try w.writeAll("\">");
     }
     var image_options = options;
     if (has_thumbnail) image_options.asset_url_prefix = options.thumbnail_url_prefix;
     try w.writeAll("<img src=\"");
-    try writeUrl(
-        w,
-        link.url,
-        image_options,
-    );
+    try writeUrl(w, link.url, image_options);
     try w.writeAll("\" alt=\"");
     try writeEscaped(w, link.text);
     try w.writeByte('"');
@@ -1209,11 +952,7 @@ fn renderMedia(
 fn hasThumbnail(url: []const u8, options: Options) bool {
     if (options.asset_url_prefix.len == 0 or options.thumbnail_url_prefix.len == 0) return false;
     const relative = assetPath(url) orelse return false;
-    const path_end = std.mem.indexOfAny(
-        u8,
-        relative,
-        "?#",
-    ) orelse relative.len;
+    const path_end = std.mem.indexOfAny(u8, relative, "?#") orelse relative.len;
     for (options.thumbnail_paths) |path| {
         if (urlPathEql(relative[0..path_end], path)) return true;
     }
@@ -1255,11 +994,7 @@ fn writeLinkString(w: *Writer, text: []const u8) Writer.Error!void {
 }
 
 fn isVideoUrl(url: []const u8) bool {
-    const path_end = std.mem.indexOfAny(
-        u8,
-        url,
-        "?#",
-    ) orelse url.len;
+    const path_end = std.mem.indexOfAny(u8, url, "?#") orelse url.len;
     const path = url[0..path_end];
     const extension = std.Io.Dir.path.extension(path);
     for ([_][]const u8{
@@ -1274,11 +1009,7 @@ fn isVideoUrl(url: []const u8) bool {
     return false;
 }
 
-fn writeUrl(
-    w: *Writer,
-    url: []const u8,
-    options: Options,
-) Writer.Error!void {
+fn writeUrl(w: *Writer, url: []const u8, options: Options) Writer.Error!void {
     if (options.asset_url_prefix.len == 0) return writeLinkString(w, url);
     const path = assetPath(url) orelse return writeLinkString(w, url);
     try writeEscaped(w, options.asset_url_prefix);
@@ -1287,21 +1018,13 @@ fn writeUrl(
 
 fn assetPath(url: []const u8) ?[]const u8 {
     var relative = url;
-    while (std.mem.startsWith(
-        u8,
-        relative,
-        "./",
-    )) relative = relative[2..];
+    while (std.mem.startsWith(u8, relative, "./")) relative = relative[2..];
     if (relative.len == 0) return null;
     switch (relative[0]) {
         '/', '?', '#' => return null,
         else => {},
     }
-    const first_end = std.mem.indexOfAny(
-        u8,
-        relative,
-        "/?#",
-    ) orelse relative.len;
+    const first_end = std.mem.indexOfAny(u8, relative, "/?#") orelse relative.len;
     const first = relative[0..first_end];
     if (std.mem.eql(u8, first, ".") or std.mem.eql(u8, first, "..") or
         std.mem.indexOfScalar(u8, first, ':') != null)
@@ -1362,11 +1085,7 @@ fn parseMedia(text: []const u8, start: usize) ?Media {
     if (start >= text.len or text[start] != '!') return null;
     const link = parseInlineLink(text, start + 1) orelse return null;
     const gif_flag = "{gif}";
-    const gif = isVideoUrl(link.url) and std.mem.startsWith(
-        u8,
-        text[link.end..],
-        gif_flag,
-    );
+    const gif = isVideoUrl(link.url) and std.mem.startsWith(u8, text[link.end..], gif_flag);
     return .{
         .link = link,
         .end = if (gif) link.end + gif_flag.len else link.end,
@@ -1481,12 +1200,7 @@ fn parseEmphasis(text: []const u8, start: usize) ?Emphasis {
     if (delim == '_' and start > 0 and ascii.isAlphanumeric(text[start - 1])) return null;
 
     if (count >= 2) {
-        if (takeDelimited(
-            text,
-            start,
-            delim,
-            2,
-        )) |span| {
+        if (takeDelimited(text, start, delim, 2)) |span| {
             return .{
                 .strong = true,
                 .content = span.content,
@@ -1494,12 +1208,7 @@ fn parseEmphasis(text: []const u8, start: usize) ?Emphasis {
             };
         }
     }
-    if (takeDelimited(
-        text,
-        start,
-        delim,
-        1,
-    )) |span| {
+    if (takeDelimited(text, start, delim, 1)) |span| {
         return .{
             .strong = false,
             .content = span.content,
@@ -1512,39 +1221,19 @@ fn parseEmphasis(text: []const u8, start: usize) ?Emphasis {
 fn parseStrike(text: []const u8, start: usize) ?Span {
     var used: usize = 1;
     if (start + 1 < text.len and text[start + 1] == '~') used = 2;
-    return takeDelimited(
-        text,
-        start,
-        '~',
-        used,
-    );
+    return takeDelimited(text, start, '~', used);
 }
 
-fn takeDelimited(
-    text: []const u8,
-    start: usize,
-    delim: u8,
-    count: usize,
-) ?Span {
+fn takeDelimited(text: []const u8, start: usize, delim: u8, count: usize) ?Span {
     const after = start + count;
     if (after >= text.len) return null;
     if (isSpace(text[after])) return null;
-    const closer = findCloser(
-        text,
-        after,
-        delim,
-        count,
-    ) orelse return null;
+    const closer = findCloser(text, after, delim, count) orelse return null;
     if (closer == after) return null;
     return .{ .content = text[after..closer], .end = closer + count };
 }
 
-fn findCloser(
-    text: []const u8,
-    start: usize,
-    delim: u8,
-    count: usize,
-) ?usize {
+fn findCloser(text: []const u8, start: usize, delim: u8, count: usize) ?usize {
     var i = start;
     while (i < text.len) {
         if (text[i] == '\\' and i + 1 < text.len) {
@@ -1577,11 +1266,7 @@ fn findCloser(
 }
 
 fn isEscapable(c: u8) bool {
-    return std.mem.indexOfScalar(
-        u8,
-        "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
-        c,
-    ) != null;
+    return std.mem.indexOfScalar(u8, "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c) != null;
 }
 
 fn isSpace(c: u8) bool {
@@ -1781,11 +1466,7 @@ test "video embeds have controls and a fallback link" {
         "m4v",
     }) |extension| {
         const gpa = std.testing.allocator;
-        const source = try std.fmt.allocPrint(
-            gpa,
-            "![A & B](clip.{s}?x=1&y=2#t=3)",
-            .{extension},
-        );
+        const source = try std.fmt.allocPrint(gpa, "![A & B](clip.{s}?x=1&y=2#t=3)", .{extension});
         defer gpa.free(source);
         const expected = try std.fmt.allocPrint(
             gpa,
@@ -1875,11 +1556,7 @@ test "gif flags only apply immediately after video embeds" {
         .{ .suffix = " {gif}", .literal = " {gif}" },
         .{ .suffix = "\\{gif}", .literal = "{gif}" },
     }) |case| {
-        const source = try std.fmt.allocPrint(
-            gpa,
-            "![](clip.mp4){s}",
-            .{case.suffix},
-        );
+        const source = try std.fmt.allocPrint(gpa, "![](clip.mp4){s}", .{case.suffix});
         defer gpa.free(source);
         const expected = try std.fmt.allocPrint(
             gpa,
@@ -2047,10 +1724,7 @@ test "inline media and ordinary links keep titles as tooltips" {
 }
 
 test "malformed captions and caption syntax in code stay literal" {
-    try expectHtml(
-        "![Alt](screen.png \"Unclosed)",
-        "<p>![Alt](screen.png &quot;Unclosed)</p>\n",
-    );
+    try expectHtml("![Alt](screen.png \"Unclosed)", "<p>![Alt](screen.png &quot;Unclosed)</p>\n");
     try expectHtml(
         "![Alt](screen.png \"Caption\" unexpected)",
         "<p>![Alt](screen.png &quot;Caption&quot; unexpected)</p>\n",

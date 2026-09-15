@@ -3,15 +3,8 @@
 const std = @import("std");
 const Writer = std.Io.Writer;
 
-const log = std.log.scoped(.partials);
-
 /// Write the document head and site header.
-pub fn writeHeader(
-    w: *Writer,
-    is_index: bool,
-    title: []const u8,
-) Writer.Error!void {
-    @setEvalBranchQuota(3000);
+pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!void {
     const header = if (is_index)
         \\<div class="indexHeader">
         \\        <div class="indexBlock"><h1>Blog</h1></div>
@@ -21,6 +14,8 @@ pub fn writeHeader(
         \\<a href="/"><h1>Blog</h1></a>
     ;
 
+    // Formatting the full document head exceeds the default comptime branch quota.
+    @setEvalBranchQuota(3000);
     return w.print(
         \\<!doctype html>
         \\<html lang="en">

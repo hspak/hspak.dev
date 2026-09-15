@@ -1,0 +1,339 @@
+/* Keep the fallback for this navigation if a font arrives too late to avoid a visible swap. */
+@font-face {
+    font-family: "et-book";
+    src: url("fonts/et-book/et-book-roman.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: optional;
+}
+
+@font-face {
+    font-family: "et-book";
+    src: url("fonts/et-book/et-book-italic.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b") format("woff2");
+    font-weight: normal;
+    font-style: italic;
+    font-display: optional;
+}
+
+@font-face {
+    font-family: "et-book";
+    src: url("fonts/et-book/et-book-bold.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: optional;
+}
+
+@font-face {
+    font-family: "IBM Plex Sans Condensed";
+    src: url("fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-Regular.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: optional;
+}
+
+@font-face {
+    font-family: "IBM Plex Sans Condensed";
+    src: url("fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b") format("woff2");
+    font-weight: 600 700;
+    font-style: normal;
+    font-display: optional;
+}
+
+:root {
+    --paper: #F3EEE6;
+    --ink: #1A1614;
+    --oxide: #C2410C;
+    --oxide-deep: #9A3412;
+    --sage: #3F4F46;
+    --brass: #B0892E;
+    --mist: #8A8178;
+    --gutter: #2C2623;
+    --line: light-dark(#DDD4C8, var(--gutter));
+    --bg: light-dark(var(--paper), var(--ink));
+    --fg: light-dark(var(--ink), var(--paper));
+    --muted: light-dark(var(--sage), var(--mist));
+    --accent: var(--oxide);
+    --code-on-dark: #E3BA72;
+    --font-body: "et-book", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    --font-title: "IBM Plex Sans Condensed", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+    --font-mono: ui-monospace, "Iosevka", "Hack", "Liberation Mono", monospace;
+    color-scheme: light dark;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:focus,
+:focus-visible,
+:target {
+    outline: none;
+}
+
+/* Unchecked follows the OS; checked (or .theme-invert) inverts it. */
+@media (prefers-color-scheme: light) {
+    :root:has(#theme:checked),
+    :root.theme-invert {
+        color-scheme: dark;
+    }
+}
+@media (prefers-color-scheme: dark) {
+    :root:has(#theme:checked),
+    :root.theme-invert {
+        color-scheme: light;
+    }
+}
+
+html,
+body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    color: var(--fg);
+    background: var(--bg);
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    transition: color 0.2s, background 0.2s;
+}
+
+a {
+    text-decoration: none;
+    color: var(--accent);
+}
+a:hover {
+    color: light-dark(var(--oxide-deep), var(--brass));
+}
+
+.entry a,
+.block > a {
+    color: inherit;
+}
+.entry a:hover h2,
+.block > a:hover h1 {
+    color: light-dark(var(--oxide-deep), var(--brass));
+}
+
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-title);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0;
+    padding-top: 0.5em;
+}
+
+h1 {
+    font-size: 1.4em;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+}
+
+h2 {
+    font-size: 1.25em;
+}
+
+blockquote {
+    border-left: 4px solid var(--line);
+    padding: 0.5em;
+    color: var(--muted);
+}
+
+code {
+    font-family: var(--font-mono);
+    font-size: 0.55em;
+    vertical-align: 1px;
+    color: light-dark(var(--oxide-deep), var(--code-on-dark));
+    background: var(--line);
+    border-radius: 4px;
+    padding: 1px 2px 1px 2px;
+}
+
+pre > code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+pre {
+    font-family: var(--font-mono);
+    background: light-dark(var(--ink), var(--gutter));
+    color: var(--code-on-dark);
+    padding: 1em;
+    margin: 0 1em 0 1em;
+    overflow: auto;
+}
+
+.indexHeader {
+    display: flex;
+    align-items: baseline;
+}
+
+.indexBlock {
+    display: flex;
+    margin-right: 0.5em;
+}
+
+.outer {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: min(720px, 90%);
+    padding: 1em;
+}
+
+.block {
+    display: flex;
+    flex-direction: column;
+    max-width: min(720px, 90%);
+    padding: 0 0.25em 0 0.25em;
+}
+
+.date {
+    font-style: italic;
+    font-weight: normal;
+    font-size: 0.85em;
+    color: var(--muted);
+    padding-left: 0.5em;
+}
+
+.preview {
+    display: flex;
+    align-content: center;
+    flex-direction: row;
+    padding: 0.5em 0 1.5em 0.25em;
+}
+
+.body {
+    padding-top: 1em;
+}
+
+.body img,
+.body video {
+    display: block;
+    max-width: 90%;
+    height: auto;
+    margin: 0 auto;
+    transform: translateX(-2%);
+}
+
+.body img[src*="/thumbnails/"],
+.body video {
+    filter:
+        drop-shadow(0 1px 2px light-dark(rgb(26 22 20 / 48%), rgb(0 0 0 / 65%)))
+        drop-shadow(0 4px 8px light-dark(rgb(26 22 20 / 28%), rgb(0 0 0 / 30%)));
+}
+
+.body figure {
+    width: fit-content;
+    max-width: 90%;
+    margin: 1em auto;
+    transform: translateX(-2%);
+}
+
+.body figure > img,
+.body figure > a > img,
+.body figure > video {
+    max-width: 100%;
+    transform: none;
+}
+
+.body figcaption {
+    color: light-dark(#666, #aaa);
+    font-size: 0.85em;
+    text-align: center;
+    margin-top: 0.4em;
+    overflow-wrap: anywhere;
+}
+
+.footnotes {
+    margin-top: 2em;
+    border-top: 1px solid var(--line);
+    padding-top: 0.5em;
+    color: var(--muted);
+    font-size: 0.85em;
+}
+
+.footnotes > ol {
+    padding-left: 1.5em;
+}
+
+.footnotes > ol > li {
+    margin-bottom: 1em;
+    scroll-margin-top: 1em;
+}
+
+.footnote-ref {
+    font-size: 0.75em;
+    line-height: 0;
+}
+
+.footnote-ref a {
+    padding: 0 0.15em;
+    scroll-margin-top: 4em;
+}
+
+.footnote-backlinks {
+    white-space: nowrap;
+}
+
+.footnote-backlinks a {
+    padding: 0.15em 0.25em;
+}
+
+.footer {
+    padding-top: 0.75em;
+}
+
+#theme {
+    appearance: none;
+    pointer-events: none;
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+label[for="theme"] {
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+}
+
+label[for="theme"]:hover {
+    color: var(--fg);
+}
+
+label[for="theme"] [aria-hidden] {
+    font-size: 1.1rem;
+    line-height: 1;
+    font-variant-emoji: text;
+}
+
+label[for="theme"] span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}

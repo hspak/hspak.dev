@@ -2,8 +2,6 @@
 
 const std = @import("std");
 
-const log = std.log.scoped(.build);
-
 pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
@@ -37,7 +35,7 @@ pub fn build(b: *std.Build) void {
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| run_cmd.addArgs(args);
-    const run_step = b.step("run", "Generate and serve the site, watching posts/ for changes");
+    const run_step = b.step("run", "Generate and serve the site, watching posts/ and docs/index.css");
     run_step.dependOn(&run_cmd.step);
 
     const test_options = b.addOptions();

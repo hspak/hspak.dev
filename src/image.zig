@@ -40,21 +40,13 @@ pub fn supportsPath(path: []const u8) bool {
 /// aspect ratio and applying camera orientation. `null` means the image fits already
 /// or contains multiple frames. Caller frees returned bytes with `gpa`.
 /// Requires `init`; all per-image native resources are released on success and error.
-pub fn thumbnail(
-    gpa: Allocator,
-    encoded: []const u8,
-    max_width: usize,
-) Error!?[]u8 {
+pub fn thumbnail(gpa: Allocator, encoded: []const u8, max_width: usize) Error!?[]u8 {
     if (max_width == 0) return error.InvalidDimensions;
     if (isAnimatedPng(encoded)) return null;
     const wand = c.NewMagickWand() orelse return error.OutOfMemory;
     defer _ = c.DestroyMagickWand(wand);
 
-    try check(wand, c.MagickReadImageBlob(
-        wand,
-        encoded.ptr,
-        encoded.len,
-    ));
+    try check(wand, c.MagickReadImageBlob(wand, encoded.ptr, encoded.len));
     if (c.MagickGetNumberImages(wand) != 1) return null;
     try check(wand, c.MagickAutoOrientImage(wand));
     const width = c.MagickGetImageWidth(wand);
@@ -67,11 +59,9 @@ pub fn thumbnail(
         1,
         (@as(u128, height) * max_width + width / 2) / width,
     ));
-    try check(wand, c.MagickThumbnailImage(
-        wand,
-        max_width,
-        scaled_height,
-    ));
+    try check(wand, c.MagickThumbnailImage(wand, max_width, scaled_height));
+    // Encoding time must not change the bytes of an otherwise identical thumbnail.
+    try check(wand, c.MagickSetOption(wand, "png:exclude-chunk", "date,time"));
     var length: usize = 0;
     const blob = c.MagickGetImageBlob(wand, &length);
     if (blob == null) {
@@ -83,32 +73,16 @@ pub fn thumbnail(
 }
 
 fn isAnimatedPng(encoded: []const u8) bool {
-    if (!std.mem.startsWith(
-        u8,
-        encoded,
-        "\x89PNG\r\n\x1a\n",
-    )) return false;
+    if (!std.mem.startsWith(u8, encoded, "\x89PNG\r\n\x1a\n")) return false;
     // MagickWand's PNG decoder exposes only APNG's default frame. The animation
     // control chunk precedes image data, so detect it before a resize can discard frames.
     var offset: usize = 8;
     while (encoded.len - offset >= 12) {
-        const length = std.mem.readInt(
-            u32,
-            encoded[offset..][0..4],
-            .big,
-        );
+        const length = std.mem.readInt(u32, encoded[offset..][0..4], .big);
         if (length > encoded.len - offset - 12) return false;
         const kind = encoded[offset + 4 ..][0..4];
-        if (std.mem.eql(
-            u8,
-            kind,
-            "acTL",
-        )) return true;
-        if (std.mem.eql(
-            u8,
-            kind,
-            "IDAT",
-        )) return false;
+        if (std.mem.eql(u8, kind, "acTL")) return true;
+        if (std.mem.eql(u8, kind, "IDAT")) return false;
         offset += @as(usize, length) + 12;
     }
     return false;
@@ -135,31 +109,15 @@ test "native thumbnails preserve aspect ratio without upscaling" {
     defer deinit();
 
     const input = "P6\n4 2\n255\n" ++ "\xff\x00\x00" ** 8;
-    const output = (try thumbnail(
-        gpa,
-        input,
-        2,
-    )).?;
+    const output = (try thumbnail(gpa, input, 2)).?;
     defer gpa.free(output);
     const wand = c.NewMagickWand() orelse return error.OutOfMemory;
     defer _ = c.DestroyMagickWand(wand);
-    try check(wand, c.MagickReadImageBlob(
-        wand,
-        output.ptr,
-        output.len,
-    ));
+    try check(wand, c.MagickReadImageBlob(wand, output.ptr, output.len));
     try testing.expectEqual(@as(usize, 2), c.MagickGetImageWidth(wand));
     try testing.expectEqual(@as(usize, 1), c.MagickGetImageHeight(wand));
-    try testing.expectEqual(null, try thumbnail(
-        gpa,
-        input,
-        4,
-    ));
-    try testing.expectEqual(null, try thumbnail(
-        gpa,
-        input,
-        8,
-    ));
+    try testing.expectEqual(null, try thumbnail(gpa, input, 4));
+    try testing.expectEqual(null, try thumbnail(gpa, input, 8));
 }
 
 test "native thumbnails reject invalid dimensions and image bytes" {
@@ -167,11 +125,7 @@ test "native thumbnails reject invalid dimensions and image bytes" {
     init();
     defer deinit();
 
-    try testing.expectError(error.InvalidDimensions, thumbnail(
-        testing.allocator,
-        "",
-        0,
-    ));
+    try testing.expectError(error.InvalidDimensions, thumbnail(testing.allocator, "", 0));
     try testing.expectError(error.ImageMagickException, thumbnail(
         testing.allocator,
         "invalid image",
@@ -185,37 +139,17 @@ test "native thumbnails retain PNG transparency and skip animated WebP and PNG" 
     init();
     defer deinit();
 
-    const output = (try thumbnail(
-        gpa,
-        @embedFile("test_data/thumbnail.png"),
-        720,
-    )).?;
+    const output = (try thumbnail(gpa, @embedFile("test_data/thumbnail.png"), 720)).?;
     defer gpa.free(output);
-    try testing.expect(std.mem.startsWith(
-        u8,
-        output,
-        "\x89PNG\r\n\x1a\n",
-    ));
+    try testing.expect(std.mem.startsWith(u8, output, "\x89PNG\r\n\x1a\n"));
     const wand = c.NewMagickWand() orelse return error.OutOfMemory;
     defer _ = c.DestroyMagickWand(wand);
-    try check(wand, c.MagickReadImageBlob(
-        wand,
-        output.ptr,
-        output.len,
-    ));
+    try check(wand, c.MagickReadImageBlob(wand, output.ptr, output.len));
     try testing.expectEqual(@as(usize, 720), c.MagickGetImageWidth(wand));
     try testing.expectEqual(@as(usize, 450), c.MagickGetImageHeight(wand));
     try testing.expect(c.MagickGetImageAlphaChannel(wand) != c.MagickFalse);
-    try testing.expectEqual(null, try thumbnail(
-        gpa,
-        @embedFile("test_data/animated.webp"),
-        720,
-    ));
-    try testing.expectEqual(null, try thumbnail(
-        gpa,
-        @embedFile("test_data/animated.png"),
-        720,
-    ));
+    try testing.expectEqual(null, try thumbnail(gpa, @embedFile("test_data/animated.webp"), 720));
+    try testing.expectEqual(null, try thumbnail(gpa, @embedFile("test_data/animated.png"), 720));
 }
 
 test "native thumbnails apply JPEG camera orientation before sizing" {
@@ -224,19 +158,11 @@ test "native thumbnails apply JPEG camera orientation before sizing" {
     init();
     defer deinit();
 
-    const output = (try thumbnail(
-        gpa,
-        @embedFile("test_data/oriented.jpg"),
-        2,
-    )).?;
+    const output = (try thumbnail(gpa, @embedFile("test_data/oriented.jpg"), 2)).?;
     defer gpa.free(output);
     const wand = c.NewMagickWand() orelse return error.OutOfMemory;
     defer _ = c.DestroyMagickWand(wand);
-    try check(wand, c.MagickReadImageBlob(
-        wand,
-        output.ptr,
-        output.len,
-    ));
+    try check(wand, c.MagickReadImageBlob(wand, output.ptr, output.len));
     try testing.expectEqual(@as(usize, 2), c.MagickGetImageWidth(wand));
     try testing.expectEqual(@as(usize, 1), c.MagickGetImageHeight(wand));
 }
@@ -252,4 +178,23 @@ test "native thumbnails propagate Zig allocator exhaustion" {
         @embedFile("test_data/thumbnail.png"),
         720,
     ));
+}
+
+test "native PNG thumbnail hashes are stable across regeneration" {
+    const testing = std.testing;
+    const gpa = testing.allocator;
+    init();
+    defer deinit();
+
+    const first = (try thumbnail(gpa, @embedFile("test_data/thumbnail.png"), 720)).?;
+    defer gpa.free(first);
+    // PNG timestamps have one-second resolution; cross it to expose metadata churn.
+    try std.Io.sleep(testing.io, .fromMilliseconds(1100), .awake);
+    const second = (try thumbnail(gpa, @embedFile("test_data/thumbnail.png"), 720)).?;
+    defer gpa.free(second);
+    var first_hash: [32]u8 = undefined;
+    var second_hash: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(first, &first_hash, .{});
+    std.crypto.hash.sha2.Sha256.hash(second, &second_hash, .{});
+    try testing.expectEqualSlices(u8, &first_hash, &second_hash);
 }

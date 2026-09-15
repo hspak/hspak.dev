@@ -6,23 +6,32 @@ const Allocator = std.mem.Allocator;
 const Io = std.Io;
 const http = std.http;
 
+const Server = @This();
+const log = std.log.scoped(.server);
+
 root: Io.Dir,
 listener: Io.net.Server,
 // Protect generated files while the watcher replaces them.
 build_mutex: Io.Mutex = .init,
 revision: std.atomic.Value(u64) = .init(0),
 
-const Server = @This();
-const log = std.log.scoped(.server);
-
 pub const InitError = Io.net.IpAddress.ListenError;
-pub const RunError = Io.net.Server.AcceptError || Io.ConcurrentError;
+pub const RunError = Io.ConcurrentError || Io.Cancelable || Io.UnexpectedError || error{
+    ProcessFdQuotaExceeded,
+    SystemFdQuotaExceeded,
+    SystemResources,
+    SocketNotListening,
+    NetworkDown,
+    WouldBlock,
+    BlockedByFirewall,
+    ProtocolFailure,
+};
 
 const Resource = struct {
     file: Io.File,
     size: u64,
-    directory: bool = false,
-    content: ?[]u8 = null,
+    directory: bool,
+    content: ?[]u8,
     revision: u64,
 };
 
@@ -33,12 +42,7 @@ const no_cache: http.Header = .{ .name = "cache-control", .value = "no-store" };
 
 /// Initialize fresh storage, borrowing `root` until `deinit`. Port zero selects a free port.
 /// Pair success with `deinit(io)`. On error, no resources are retained.
-pub fn init(
-    server: *Server,
-    root: Io.Dir,
-    io: Io,
-    port: u16,
-) InitError!void {
+pub fn init(server: *Server, root: Io.Dir, io: Io, port: u16) InitError!void {
     const address: Io.net.IpAddress = .{
         .ip4 = .{
             .bytes = .{
@@ -65,17 +69,13 @@ pub fn deinit(server: *Server, io: Io) void {
 }
 
 /// Serve until canceled. `gpa` must support concurrent calls.
-pub fn run(
-    server: *Server,
-    gpa: Allocator,
-    io: Io,
-) RunError!void {
+pub fn run(server: *Server, gpa: Allocator, io: Io) RunError!void {
     var connections: Io.Group = .init;
     defer connections.cancel(io);
     while (true) {
         const stream = server.listener.accept(io) catch |err| switch (err) {
             error.ConnectionAborted => continue,
-            else => return err,
+            else => |accept_err| return accept_err,
         };
         connections.concurrent(
             io,
@@ -93,12 +93,7 @@ pub fn run(
     }
 }
 
-fn serveConnection(
-    server: *Server,
-    gpa: Allocator,
-    io: Io,
-    stream: Io.net.Stream,
-) void {
+fn serveConnection(server: *Server, gpa: Allocator, io: Io, stream: Io.net.Stream) void {
     defer stream.close(io);
     var read_buffer: [8192]u8 = undefined;
     var write_buffer: [8192]u8 = undefined;
@@ -106,11 +101,7 @@ fn serveConnection(
     var writer = stream.writer(io, &write_buffer);
     var connection: http.Server = .init(&reader.interface, &writer.interface);
     var request = connection.receiveHead() catch return;
-    server.respond(
-        gpa,
-        io,
-        &request,
-    ) catch |err| switch (err) {
+    server.respond(gpa, io, &request) catch |err| switch (err) {
         error.Canceled,
         error.WriteFailed,
         error.ReadFailed,
@@ -121,12 +112,7 @@ fn serveConnection(
     };
 }
 
-fn respond(
-    server: *Server,
-    gpa: Allocator,
-    io: Io,
-    request: *http.Server.Request,
-) !void {
+fn respond(server: *Server, gpa: Allocator, io: Io, request: *http.Server.Request) !void {
     if (request.head.method != .GET and request.head.method != .HEAD) {
         return request.respond("Method not allowed\n", .{
             .status = .method_not_allowed,
@@ -142,11 +128,7 @@ fn respond(
     };
     defer gpa.free(path);
 
-    if (std.mem.eql(
-        u8,
-        path,
-        "__zmd/reload.js",
-    )) {
+    if (std.mem.eql(u8, path, "__zmd/reload.js")) {
         return request.respond(reload_script, .{
             .keep_alive = false,
             .extra_headers = &.{
@@ -155,17 +137,9 @@ fn respond(
             },
         });
     }
-    if (std.mem.eql(
-        u8,
-        path,
-        "__zmd/events",
-    )) return server.sendEvents(io, request);
+    if (std.mem.eql(u8, path, "__zmd/events")) return server.sendEvents(io, request);
 
-    var resource = server.openResource(
-        gpa,
-        io,
-        path,
-    ) catch |err| switch (err) {
+    var resource = server.openResource(gpa, io, path) catch |err| switch (err) {
         error.Canceled, error.OutOfMemory => return err,
         error.FileNotFound,
         error.NotDir,
@@ -183,16 +157,8 @@ fn respond(
     defer resource.file.close(io);
     defer if (resource.content) |content| gpa.free(content);
 
-    if (resource.directory and path.len != 0 and !std.mem.endsWith(
-        u8,
-        path,
-        "/",
-    )) {
-        const query = std.mem.indexOfScalar(
-            u8,
-            target,
-            '?',
-        ) orelse target.len;
+    if (resource.directory and path.len != 0 and !std.mem.endsWith(u8, path, "/")) {
+        const query = std.mem.indexOfScalar(u8, target, '?') orelse target.len;
         const location = try std.fmt.allocPrint(
             gpa,
             "{s}/{s}",
@@ -208,16 +174,8 @@ fn respond(
 
     const content_type = if (resource.directory) "text/html; charset=utf-8" else mimeType(path);
     if (resource.content) |content| {
-        const injected = if (std.mem.startsWith(
-            u8,
-            content_type,
-            "text/html",
-        ))
-            try injectReload(
-                gpa,
-                content,
-                resource.revision,
-            )
+        const injected = if (std.mem.startsWith(u8, content_type, "text/html"))
+            try injectReload(gpa, content, resource.revision)
         else
             null;
         defer if (injected) |body| gpa.free(body);
@@ -235,11 +193,7 @@ fn respond(
             if (std.ascii.eqlIgnoreCase(header.name, "range")) {
                 range = parseRange(header.value, resource.size) catch {
                     var buffer: [64]u8 = undefined;
-                    const value = try std.fmt.bufPrint(
-                        &buffer,
-                        "bytes */{d}",
-                        .{resource.size},
-                    );
+                    const value = try std.fmt.bufPrint(&buffer, "bytes */{d}", .{resource.size});
                     return request.respond("Range not satisfiable\n", .{
                         .status = .range_not_satisfiable,
                         .keep_alive = false,
@@ -289,63 +243,34 @@ fn respond(
     try body.end();
 }
 
-fn openResource(
-    server: *Server,
-    gpa: Allocator,
-    io: Io,
-    path: []const u8,
-) !Resource {
+fn openResource(server: *Server, gpa: Allocator, io: Io, path: []const u8) !Resource {
     try server.build_mutex.lock(io);
     defer server.build_mutex.unlock(io);
 
     // Walk one component at a time so intermediate symlinks cannot escape docs/.
     var parent = server.root;
     defer if (parent.handle != server.root.handle) parent.close(io);
-    var components = std.mem.tokenizeScalar(
-        u8,
-        path,
-        '/',
-    );
+    var components = std.mem.tokenizeScalar(u8, path, '/');
     var basename: []const u8 = "index.html";
     var directory = path.len == 0;
     while (components.next()) |component| {
         if (components.peek() == null) {
-            const stat = try parent.statFile(
-                io,
-                component,
-                .{ .follow_symlinks = false },
-            );
+            const stat = try parent.statFile(io, component, .{ .follow_symlinks = false });
             if (stat.kind == .file) {
-                if (std.mem.endsWith(
-                    u8,
-                    path,
-                    "/",
-                )) return error.NotDir;
+                if (std.mem.endsWith(u8, path, "/")) return error.NotDir;
                 basename = component;
                 break;
             }
             if (stat.kind != .directory) return error.NotRegularFile;
             directory = true;
         }
-        const next = try parent.openDir(
-            io,
-            component,
-            .{ .follow_symlinks = false },
-        );
+        const next = try parent.openDir(io, component, .{ .follow_symlinks = false });
         if (parent.handle != server.root.handle) parent.close(io);
         parent = next;
     }
-    const entry = try parent.statFile(
-        io,
-        basename,
-        .{ .follow_symlinks = false },
-    );
+    const entry = try parent.statFile(io, basename, .{ .follow_symlinks = false });
     if (entry.kind != .file) return error.NotRegularFile;
-    const file = try parent.openFile(
-        io,
-        basename,
-        .{ .follow_symlinks = false },
-    );
+    const file = try parent.openFile(io, basename, .{ .follow_symlinks = false });
     errdefer file.close(io);
     const stat = try file.stat(io);
     if (stat.kind != .file) return error.NotRegularFile;
@@ -353,16 +278,8 @@ fn openResource(
     // Snapshot HTML and the feed under the build lock, then release it before
     // writing to a potentially slow browser. Media streams from its open inode.
     const content_type = mimeType(basename);
-    const snapshot = std.mem.startsWith(
-        u8,
-        content_type,
-        "text/html",
-    ) or
-        std.mem.eql(
-            u8,
-            content_type,
-            "application/xml; charset=utf-8",
-        );
+    const snapshot = std.mem.startsWith(u8, content_type, "text/html") or
+        std.mem.eql(u8, content_type, "application/xml; charset=utf-8");
     var reader = file.reader(io, &.{});
     return .{
         .file = file,
@@ -376,11 +293,7 @@ fn openResource(
     };
 }
 
-fn sendEvents(
-    server: *Server,
-    io: Io,
-    request: *http.Server.Request,
-) !void {
+fn sendEvents(server: *Server, io: Io, request: *http.Server.Request) !void {
     var buffer: [256]u8 = undefined;
     var body = try request.respondStreaming(&buffer, .{
         .respond_options = .{
@@ -409,11 +322,7 @@ fn sendEvents(
             try body.flush();
             ticks = 0;
         }
-        try Io.sleep(
-            io,
-            .fromMilliseconds(250),
-            .awake,
-        );
+        try Io.sleep(io, .fromMilliseconds(250), .awake);
         ticks += 1;
     }
 }
@@ -434,11 +343,7 @@ fn decodePath(gpa: Allocator, target: []const u8) (Allocator.Error || error{Inva
     for (target) |byte| {
         if (byte < 0x20 or byte == 0x7f or byte == '#') return error.InvalidPath;
     }
-    const query = std.mem.indexOfScalar(
-        u8,
-        target,
-        '?',
-    ) orelse target.len;
+    const query = std.mem.indexOfScalar(u8, target, '?') orelse target.len;
     var decoded: std.Io.Writer.Allocating = .init(gpa);
     defer decoded.deinit();
     var i: usize = 1;
@@ -457,39 +362,19 @@ fn decodePath(gpa: Allocator, target: []const u8) (Allocator.Error || error{Inva
         decoded.writer.writeByte(byte) catch return error.OutOfMemory;
     }
     const path = decoded.written();
-    if (std.mem.startsWith(
-        u8,
-        path,
-        "/",
-    ) or std.mem.indexOf(
-        u8,
-        path,
-        "//",
-    ) != null) return error.InvalidPath;
-    var components = std.mem.splitScalar(
-        u8,
-        path,
-        '/',
-    );
+    if (std.mem.startsWith(u8, path, "/") or std.mem.indexOf(u8, path, "//") != null) {
+        return error.InvalidPath;
+    }
+    var components = std.mem.splitScalar(u8, path, '/');
     while (components.next()) |component| {
-        if (std.mem.eql(
-            u8,
-            component,
-            ".",
-        ) or std.mem.eql(
-            u8,
-            component,
-            "..",
-        )) return error.InvalidPath;
+        if (std.mem.eql(u8, component, ".") or std.mem.eql(u8, component, "..")) {
+            return error.InvalidPath;
+        }
     }
     return decoded.toOwnedSlice();
 }
 
-fn injectReload(
-    gpa: Allocator,
-    html: []const u8,
-    revision: u64,
-) Allocator.Error![]u8 {
+fn injectReload(gpa: Allocator, html: []const u8, revision: u64) Allocator.Error![]u8 {
     const position = std.ascii.indexOfIgnoreCase(html, "</body>") orelse html.len;
     return std.fmt.allocPrint(
         gpa,
@@ -504,38 +389,19 @@ fn injectReload(
 
 fn parseRange(header: []const u8, size: u64) error{InvalidRange}!?Range {
     // Unknown units and multipart ranges can be ignored by serving the whole file.
-    if (!std.mem.startsWith(
-        u8,
-        header,
-        "bytes=",
-    ) or std.mem.indexOfScalar(
-        u8,
-        header,
-        ',',
-    ) != null) return null;
+    if (!std.mem.startsWith(u8, header, "bytes=") or
+        std.mem.indexOfScalar(u8, header, ',') != null) return null;
     if (size == 0) return error.InvalidRange;
     const range = header[6..];
-    const dash = std.mem.indexOfScalar(
-        u8,
-        range,
-        '-',
-    ) orelse return error.InvalidRange;
+    const dash = std.mem.indexOfScalar(u8, range, '-') orelse return error.InvalidRange;
     const first = range[0..dash];
     const last = range[dash + 1 ..];
     if (first.len == 0) {
-        const suffix = std.fmt.parseInt(
-            u64,
-            last,
-            10,
-        ) catch return error.InvalidRange;
+        const suffix = std.fmt.parseInt(u64, last, 10) catch return error.InvalidRange;
         if (suffix == 0) return error.InvalidRange;
         return .{ .start = size - @min(size, suffix), .end = size - 1 };
     }
-    const start = std.fmt.parseInt(
-        u64,
-        first,
-        10,
-    ) catch return error.InvalidRange;
+    const start = std.fmt.parseInt(u64, first, 10) catch return error.InvalidRange;
     const end = if (last.len == 0) size - 1 else std.fmt.parseInt(
         u64,
         last,
@@ -586,11 +452,7 @@ fn testRequest(server: *Server, raw: []const u8) ![]u8 {
     defer writer.deinit();
     var connection: http.Server = .init(&reader, &writer.writer);
     var request = try connection.receiveHead();
-    try server.respond(
-        std.testing.allocator,
-        std.testing.io,
-        &request,
-    );
+    try server.respond(std.testing.allocator, std.testing.io, &request);
     return writer.toOwnedSlice();
 }
 
@@ -699,21 +561,9 @@ test "server serves HTML, assets, redirects, HEAD, and video ranges" {
         defer testing.allocator.free(raw);
         const response = try testRequest(&server, raw);
         defer testing.allocator.free(response);
-        try testing.expect(std.mem.indexOf(
-            u8,
-            response,
-            case.status,
-        ) != null);
-        try testing.expect(std.mem.indexOf(
-            u8,
-            response,
-            case.header,
-        ) != null);
-        try testing.expect(std.mem.indexOf(
-            u8,
-            response,
-            "cache-control: no-store\r\n",
-        ) != null);
+        try testing.expect(std.mem.indexOf(u8, response, case.status) != null);
+        try testing.expect(std.mem.indexOf(u8, response, case.header) != null);
+        try testing.expect(std.mem.indexOf(u8, response, "cache-control: no-store\r\n") != null);
         const body = (std.mem.indexOf(
             u8,
             response,
@@ -763,16 +613,8 @@ test "server serves HTML, assets, redirects, HEAD, and video ranges" {
         defer testing.allocator.free(raw);
         const response = try testRequest(&server, raw);
         defer testing.allocator.free(response);
-        try testing.expect(std.mem.indexOf(
-            u8,
-            response,
-            range.status,
-        ) != null);
-        try testing.expect(std.mem.indexOf(
-            u8,
-            response,
-            range.content_range,
-        ) != null);
+        try testing.expect(std.mem.indexOf(u8, response, range.status) != null);
+        try testing.expect(std.mem.indexOf(u8, response, range.content_range) != null);
         const body = (std.mem.indexOf(
             u8,
             response,
@@ -780,12 +622,7 @@ test "server serves HTML, assets, redirects, HEAD, and video ranges" {
         ) orelse return error.MissingHeaders) + 4;
         try testing.expectEqualStrings(range.body, response[body..]);
     }
-    const saved = try tmp.dir.readFileAlloc(
-        io,
-        "index.html",
-        testing.allocator,
-        .limited(4096),
-    );
+    const saved = try tmp.dir.readFileAlloc(io, "index.html", testing.allocator, .limited(4096));
     defer testing.allocator.free(saved);
     try testing.expectEqualStrings(html, saved);
 }
@@ -795,16 +632,8 @@ test "server rejects traversal and symlinks outside the document root" {
     const io = testing.io;
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.createDir(
-        io,
-        "docs",
-        .default_dir,
-    );
-    const docs = try tmp.dir.openDir(
-        io,
-        "docs",
-        .{},
-    );
+    try tmp.dir.createDir(io, "docs", .default_dir);
+    const docs = try tmp.dir.openDir(io, "docs", .{});
     defer docs.close(io);
     try tmp.dir.writeFile(io, .{ .sub_path = "secret.txt", .data = "outside docs" });
     var server: Server = .{ .root = docs, .listener = undefined };
@@ -828,25 +657,11 @@ test "server rejects traversal and symlinks outside the document root" {
         defer testing.allocator.free(raw);
         const response = try testRequest(&server, raw);
         defer testing.allocator.free(response);
-        try testing.expect(std.mem.startsWith(
-            u8,
-            response,
-            "HTTP/1.1 400 ",
-        ));
+        try testing.expect(std.mem.startsWith(u8, response, "HTTP/1.1 400 "));
     }
     if (comptime builtin.os.tag == .windows) return;
-    try docs.symLink(
-        io,
-        "../secret.txt",
-        "linked.txt",
-        .{},
-    );
-    try docs.symLink(
-        io,
-        "..",
-        "outside",
-        .{ .is_directory = true },
-    );
+    try docs.symLink(io, "../secret.txt", "linked.txt", .{});
+    try docs.symLink(io, "..", "outside", .{ .is_directory = true });
     for ([_][]const u8{ "/linked.txt", "/outside/secret.txt" }) |target| {
         const raw = try std.fmt.allocPrint(
             testing.allocator,
@@ -856,15 +671,7 @@ test "server rejects traversal and symlinks outside the document root" {
         defer testing.allocator.free(raw);
         const response = try testRequest(&server, raw);
         defer testing.allocator.free(response);
-        try testing.expect(std.mem.startsWith(
-            u8,
-            response,
-            "HTTP/1.1 404 ",
-        ));
-        try testing.expect(std.mem.indexOf(
-            u8,
-            response,
-            "outside docs",
-        ) == null);
+        try testing.expect(std.mem.startsWith(u8, response, "HTTP/1.1 404 "));
+        try testing.expect(std.mem.indexOf(u8, response, "outside docs") == null);
     }
 }

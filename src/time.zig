@@ -4,8 +4,6 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Timestamp = std.Io.Timestamp;
 
-const log = std.log.scoped(.time);
-
 /// Format `timestamp` as `Month D, YYYY`. Caller frees the returned slice with `gpa`.
 pub fn formatTimestamp(gpa: Allocator, timestamp: Timestamp) Allocator.Error![]const u8 {
     const secs: u64 = @intCast(@max(timestamp.toSeconds(), 0));

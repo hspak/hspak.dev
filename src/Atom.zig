@@ -7,28 +7,18 @@ const Writer = Io.Writer;
 const Posts = @import("Posts.zig");
 const time = @import("time.zig");
 
+const Atom = @This();
+
 feed: Writer.Allocating,
 output_file: Io.File,
 
-const Atom = @This();
-const log = std.log.scoped(.atom);
-
 pub const InitError = Io.File.OpenError;
-pub const GenerateError = Allocator.Error || Writer.Error || Io.File.Writer.Error || Posts.Error;
+pub const GenerateError = Allocator.Error || Io.File.Writer.Error;
 
 /// Initialize fresh storage, creating `output_path` and preparing an empty feed.
 /// Pair success with `deinit(io)`. On error, no resources are retained.
-pub fn init(
-    atom: *Atom,
-    gpa: Allocator,
-    io: Io,
-    output_path: []const u8,
-) InitError!void {
-    const file = try Io.Dir.cwd().createFile(
-        io,
-        output_path,
-        .{},
-    );
+pub fn init(atom: *Atom, gpa: Allocator, io: Io, output_path: []const u8) InitError!void {
+    const file = try Io.Dir.cwd().createFile(io, output_path, .{});
     errdefer file.close(io);
     atom.* = .{
         .feed = .init(gpa),
@@ -38,33 +28,23 @@ pub fn init(
 
 /// Close the feed file and free the buffer. Does not free `atom` itself.
 pub fn deinit(atom: *Atom, io: Io) void {
-    atom.output_file.close(io);
     atom.feed.deinit();
+    atom.output_file.close(io);
     atom.* = undefined;
 }
 
 /// Write the Atom XML for `posts` to the file opened in `init`.
-pub fn generate(
-    atom: *Atom,
-    io: Io,
-    posts: *const Posts,
-) GenerateError!void {
-    try atom.header(io, posts);
-    try atom.addEntries(posts);
-    try atom.footer();
+pub fn generate(atom: *Atom, io: Io, posts: *const Posts) GenerateError!void {
+    // These helpers write only to the allocating buffer, whose write failures mean OOM.
+    atom.header(io, posts) catch return error.OutOfMemory;
+    atom.addEntries(posts) catch return error.OutOfMemory;
+    atom.footer() catch return error.OutOfMemory;
     try atom.output_file.writeStreamingAll(io, atom.feed.writer.buffered());
 }
 
-fn header(
-    atom: *Atom,
-    io: Io,
-    posts: *const Posts,
-) !void {
+fn header(atom: *Atom, io: Io, posts: *const Posts) !void {
     const w = &atom.feed.writer;
-    const timestamp = if (posts.list.items.len == 0)
-        Io.Clock.real.now(io)
-    else
-        try posts.latestUpdatedAt();
+    const timestamp = posts.latestUpdatedAt() orelse Io.Clock.real.now(io);
     const formatted_timestamp = try time.formatTimestamp(atom.feed.allocator, timestamp);
     defer atom.feed.allocator.free(formatted_timestamp);
     try w.print(
@@ -88,11 +68,7 @@ fn addEntries(atom: *Atom, posts: *const Posts) !void {
         try w.writeAll("<entry>\n");
         try w.print("  <title>{s}</title>\n", .{item.meta.title});
         try w.print("  <published>{s}</published>\n", .{item.meta.created_at});
-        if (!std.mem.eql(
-            u8,
-            item.meta.updated_at,
-            Posts.placeholder_text,
-        )) {
+        if (!std.mem.eql(u8, item.meta.updated_at, Posts.Post.placeholder_text)) {
             try w.print("  <updated>{s}</updated>\n", .{item.meta.updated_at});
         } else {
             try w.print("  <updated>{s}</updated>\n", .{item.meta.created_at});
@@ -102,11 +78,7 @@ fn addEntries(atom: *Atom, posts: *const Posts) !void {
         , .{item.meta.name});
         try w.print("\n  <id>https://hspak.dev/post/{s}/</id>\n", .{item.meta.name});
         try w.writeAll("  <content type=\"html\">\n    ");
-        try writeContent(
-            w,
-            item.parsed_html,
-            item.meta.name,
-        );
+        try writeContent(w, item.parsed_html, item.meta.name);
         try w.writeAll("  </content>");
         try w.writeAll("\n</entry>\n");
     }
@@ -116,11 +88,7 @@ fn footer(atom: *Atom) !void {
     try atom.feed.writer.writeAll("</feed>\n");
 }
 
-fn writeContent(
-    w: *Writer,
-    html_body: []const u8,
-    post_name: []const u8,
-) Writer.Error!void {
+fn writeContent(w: *Writer, html_body: []const u8, post_name: []const u8) Writer.Error!void {
     var rest = html_body;
     // Generated HTML uses double-quoted attributes; quoted text is already HTML-escaped.
     // Feed readers need the published page URL to resolve fragment navigation.
@@ -166,4 +134,32 @@ test "feed fragment links target the post while escaped code stays literal" {
             "&lt;code&gt;href=&amp;quot;#literal&amp;quot;&lt;/code&gt;",
         output.written(),
     );
+}
+
+test "feed generation releases resources on every allocation failure" {
+    const testing = std.testing;
+    const gpa = testing.allocator;
+    const generator = struct {
+        fn generate(allocator: Allocator, path: []const u8) !void {
+            var atom: Atom = undefined;
+            try atom.init(allocator, testing.io, path);
+            defer atom.deinit(testing.io);
+            const posts: Posts = .{};
+            try atom.generate(testing.io, &posts);
+            const feed = try Io.Dir.cwd().readFileAlloc(testing.io, path, allocator, .unlimited);
+            defer allocator.free(feed);
+            try testing.expect(std.mem.startsWith(u8, feed, "<?xml"));
+            try testing.expect(std.mem.endsWith(u8, feed, "</feed>\n"));
+        }
+    };
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const path = try Io.Dir.path.join(gpa, &.{
+        ".zig-cache",
+        "tmp",
+        &tmp.sub_path,
+        "feed.xml",
+    });
+    defer gpa.free(path);
+    try testing.checkAllAllocationFailures(gpa, generator.generate, .{path});
 }
