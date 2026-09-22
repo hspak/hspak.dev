@@ -41,6 +41,8 @@ pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!v
         \\    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         \\    <link rel="preload" href="/fonts/et-book/et-book-roman.woff2"
         \\          as="font" type="font/woff2" crossorigin>
+        \\    <link rel="preload" href="/fonts/et-book/et-book-italic.woff2"
+        \\          as="font" type="font/woff2" crossorigin>
         \\    <link rel="preload" href="/fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2"
         \\          as="font" type="font/woff2" crossorigin>
         \\    <link rel="stylesheet" href="/index.css">
