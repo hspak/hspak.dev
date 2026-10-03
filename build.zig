@@ -1,4 +1,4 @@
-//! Build the zmd static site generator and its tests.
+//! Build the site generator, production server, and their tests.
 
 const std = @import("std");
 
@@ -38,8 +38,30 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Generate and serve the site, watching posts/ and docs/index.css");
     run_step.dependOn(&run_cmd.step);
 
+    const zhtps = b.dependency("zhtps", .{
+        .target = target,
+        .optimize = optimize,
+        .@"build-server" = false,
+        .@"system-openssl" = b.option(bool, "system-openssl", "Link system OpenSSL") orelse false,
+        .@"system-nghttp2" = b.option(bool, "system-nghttp2", "Link system libnghttp2") orelse false,
+        .@"system-zstd" = b.option(bool, "system-zstd", "Link system libzstd") orelse false,
+    }).module("zhtps");
+    const server_module = b.createModule(.{
+        .root_source_file = b.path("src/serve.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{.{ .name = "zhtps", .module = zhtps }},
+    });
+    const server = b.addExecutable(.{ .name = "zserve", .root_module = server_module });
+    const install_server = b.addInstallArtifact(server, .{});
+    b.step("install-server", "Install the zhtps production server").dependOn(&install_server.step);
+    const serve_cmd = b.addRunArtifact(server);
+    if (b.args) |args| serve_cmd.addArgs(args);
+    b.step("serve", "Serve generated docs/ with zstd compression").dependOn(&serve_cmd.step);
+
     const test_options = b.addOptions();
     test_options.addOptionPath("zmd_path", exe.getEmittedBin());
+    test_options.addOptionPath("zserve_path", server.getEmittedBin());
     const test_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,

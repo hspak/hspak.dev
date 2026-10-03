@@ -3,8 +3,41 @@
   <head>
     <title>Introducing Flamez</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-u7beveoHBy1OQkOE9HO9POYvblQwbjkaUgc9tQW/swk=';">
     <meta name="color-scheme" content="light dark">
+    <script>const storageKey = "theme-invert";
+
+function loadInvert() {
+    try {
+        return localStorage.getItem(storageKey) === "1";
+    } catch {
+        return false;
+    }
+}
+
+function saveInvert(on) {
+    try {
+        if (on) localStorage.setItem(storageKey, "1");
+        else localStorage.removeItem(storageKey);
+    } catch {}
+}
+
+function applyInvert(on) {
+    document.documentElement.classList.toggle("theme-invert", on);
+}
+
+applyInvert(loadInvert());
+
+document.addEventListener("DOMContentLoaded", () => {
+    const box = document.getElementById("theme");
+    if (!box) return;
+    box.checked = loadInvert();
+    box.addEventListener("change", () => {
+        saveInvert(box.checked);
+        applyInvert(box.checked);
+    });
+});
+</script>
     <meta name="referrer" content="strict-origin">
     <meta name="author" content="Hong Shick Pak">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,17 +50,16 @@
     <meta property="og:description" content="Blog of Hong Shick Pak">
     <meta property="twitter:creator" content="@hspasta">
     <link rel="canonical" href="https://hspak.dev/">
-    <link rel="icon" href="/favicon.svg?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" type="image/svg+xml">
-    <link rel="icon" href="/favicon.ico?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" sizes="32x32">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b">
-    <link rel="preload" href="/fonts/et-book/et-book-roman.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"
+    <link rel="icon" href="/favicon.svg?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" sizes="32x32">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783">
+    <link rel="preload" href="/fonts/et-book/et-book-roman.woff2?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"
           as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/et-book/et-book-italic.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"
+    <link rel="preload" href="/fonts/et-book/et-book-italic.woff2?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"
           as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"
+    <link rel="preload" href="/fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"
           as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/site.css?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b">
-    <script src="/theme.js?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"></script>
+    <link rel="stylesheet" href="/site.css?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783">
   </head>
   <body>
     <input type="checkbox" id="theme">
@@ -37,6 +69,7 @@
       <div class="block">
       <a href="/"><h1>Blog</h1></a>
       </div>
+      <main>
       <div class="block">
         <h2>Introducing Flamez</h2>
         <div class="date">Sep 6, 2026 </div>
@@ -62,7 +95,7 @@ Majority of the additional prompting was for:</p>
 <p>The more I knew exactly what I wanted, the better sol would perform in general.
 Mod one really weird bug<sup class="footnote-ref"><a id="fnref-post-8-1-1" href="#fn-post-8-1" role="doc-noteref" aria-label="Footnote 1">1</a></sup>, it was actually quite smooth sailing.</p>
 <figure>
-<video autoplay loop muted playsinline src="/post/introducing-flamez/assets/video-self.mp4?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" aria-label="building-self" title="zig build for self"><a href="/post/introducing-flamez/assets/video-self.mp4?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b">building-self</a></video>
+<video autoplay loop muted playsinline src="/post/introducing-flamez/assets/video-self.mp4?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" aria-label="building-self" title="zig build for self"><a href="/post/introducing-flamez/assets/video-self.mp4?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783">building-self</a></video>
 <figcaption>zig build for self</figcaption>
 </figure>
 <p>I also asked for these features so that maybe this tool could be useful one day
@@ -87,15 +120,15 @@ sufficient context to build a real DAG. It's hueristics all the way down.)</li>
 <p>Some random builds for fun (these are fully collapsed, these are run on a
 32-core machine so traces get <em>deep</em>):</p>
 <figure>
-<a href="/post/introducing-flamez/assets/flamez-llama-cpp.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"><img src="/post/introducing-flamez/thumbnails/flamez-llama-cpp.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" alt="building-llama-cpp-vulkan" title="llama.cpp (vulkan)" /></a>
+<a href="/post/introducing-flamez/assets/flamez-llama-cpp.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"><img src="/post/introducing-flamez/thumbnails/flamez-llama-cpp.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" alt="building-llama-cpp-vulkan" title="llama.cpp (vulkan)" /></a>
 <figcaption>llama.cpp (vulkan)</figcaption>
 </figure>
 <figure>
-<a href="/post/introducing-flamez/assets/flamez-ghostty.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"><img src="/post/introducing-flamez/thumbnails/flamez-ghostty.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" alt="building-ghostty" title="ghostty (debug)" /></a>
+<a href="/post/introducing-flamez/assets/flamez-ghostty.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"><img src="/post/introducing-flamez/thumbnails/flamez-ghostty.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" alt="building-ghostty" title="ghostty (debug)" /></a>
 <figcaption>ghostty (debug)</figcaption>
 </figure>
 <figure>
-<a href="/post/introducing-flamez/assets/flamez-ghostty-detailed.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"><img src="/post/introducing-flamez/thumbnails/flamez-ghostty-detailed.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" alt="building-ghostty-detailed" title="ghostty
+<a href="/post/introducing-flamez/assets/flamez-ghostty-detailed.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"><img src="/post/introducing-flamez/thumbnails/flamez-ghostty-detailed.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" alt="building-ghostty-detailed" title="ghostty
 detailed pane" /></a>
 <figcaption>ghostty
 detailed pane</figcaption>
@@ -104,11 +137,11 @@ detailed pane</figcaption>
 though supposedly in macOS 27, there's a better API being released, hence the
 &quot;best effort&quot; label for now:</p>
 <figure>
-<a href="/post/introducing-flamez/assets/flamez-macos.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"><img src="/post/introducing-flamez/thumbnails/flamez-macos.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" alt="building-self-macos" title="flamez macos" /></a>
+<a href="/post/introducing-flamez/assets/flamez-macos.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"><img src="/post/introducing-flamez/thumbnails/flamez-macos.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" alt="building-self-macos" title="flamez macos" /></a>
 <figcaption>flamez macos</figcaption>
 </figure>
 <figure>
-<a href="/post/introducing-flamez/assets/flamez-macos-detailed.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"><img src="/post/introducing-flamez/thumbnails/flamez-macos-detailed.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" alt="building-self-macos-detailed" title="flamez macos" /></a>
+<a href="/post/introducing-flamez/assets/flamez-macos-detailed.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"><img src="/post/introducing-flamez/thumbnails/flamez-macos-detailed.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" alt="building-self-macos-detailed" title="flamez macos" /></a>
 <figcaption>flamez macos</figcaption>
 </figure>
 <p>After becoming a father this year, it's amazing I can still work on these side
@@ -137,7 +170,8 @@ this project, so I just added a small workaround (too hacky to upstream).&#160;<
 </ol>
 </section>
         </div>
-      </div>      <div class="block">
+      </div>      </main>
+      <div class="block">
         <div class="footer">
           <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
         </div>

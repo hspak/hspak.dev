@@ -6,6 +6,38 @@ const Io = std.Io;
 const testing = std.testing;
 const test_options = @import("test_options");
 
+fn expectInlineTheme(html: []const u8) !void {
+    const start = (std.mem.indexOf(u8, html, "<script>") orelse
+        return error.MissingThemeScript) + "<script>".len;
+    const end = std.mem.indexOfPos(u8, html, start, "</script>") orelse
+        return error.MissingScriptEnd;
+    const script = html[start..end];
+    try testing.expectEqualStrings(@embedFile("theme.js"), script);
+    const stylesheet = std.mem.indexOf(u8, html, "<link rel=\"stylesheet\"") orelse
+        return error.MissingStylesheet;
+    try testing.expect(end < stylesheet);
+    try testing.expect(std.mem.indexOf(u8, html, "<script src=\"/theme.js") == null);
+
+    const prefix = "<meta http-equiv=\"Content-Security-Policy\" content=\"";
+    const policy_start = (std.mem.indexOf(u8, html, prefix) orelse
+        return error.MissingContentSecurityPolicy) + prefix.len;
+    const policy_end = std.mem.indexOfScalarPos(u8, html, policy_start, '"') orelse
+        return error.MissingPolicyEnd;
+    try testing.expect(policy_end < start);
+    const policy = html[policy_start..policy_end];
+    var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(script, &digest, .{});
+    var hash_buffer: [std.base64.standard.Encoder.calcSize(digest.len)]u8 = undefined;
+    const encoded = std.base64.standard.Encoder.encode(&hash_buffer, &digest);
+    const expected = try std.fmt.allocPrint(
+        testing.allocator,
+        "default-src 'self'; script-src 'self' 'sha256-{s}';",
+        .{encoded},
+    );
+    defer testing.allocator.free(expected);
+    try testing.expectEqualStrings(expected, policy);
+}
+
 const Site = struct {
     dir: Io.Dir = .cwd(),
     log_offset: usize = 0,
@@ -308,19 +340,20 @@ test "cache busting versions URLs without retaining asset copies" {
     try tmp.dir.createDirPath(io, "posts/0001-test");
     const css = "@font-face { src: url(\"fonts/test/font.woff2\"); } body { color: red; }";
     try tmp.dir.writeFile(io, .{ .sub_path = "docs/index.css", .data = css });
-    try tmp.dir.writeFile(io, .{ .sub_path = "docs/theme.js", .data = "// theme one" });
+    try tmp.dir.writeFile(io, .{ .sub_path = "posts/0001-test/example.js", .data = "// script one" });
     try tmp.dir.writeFile(io, .{ .sub_path = "docs/fonts/test/font.woff2", .data = "font one" });
     try tmp.dir.writeFile(io, .{ .sub_path = "posts/0001-test/clip.mp4", .data = "video one" });
     try tmp.dir.writeFile(io, .{
         .sub_path = "posts/0001-test.md",
         .data = "Name: test\nTitle: Test\nDescription: Test\nDraft: false\n---\n" ++
-            "![Clip](clip.mp4?download=1#t=2)\n\n`href=\"/index.css\"`\n",
+            "![Clip](clip.mp4?download=1#t=2)\n\n[Script](example.js)\n\n`href=\"/index.css\"`\n",
     });
     const executable = try Io.Dir.cwd().realPathFileAlloc(io, test_options.zmd_path, gpa);
     defer gpa.free(executable);
     try site_builder.build(tmp.dir, executable);
     const first = try site_builder.read(tmp.dir, "docs/post/test/index.html");
     defer gpa.free(first);
+    try expectInlineTheme(first);
     const first_css = try site_builder.url(first, ".css");
     try testing.expect(std.mem.startsWith(u8, first_css, "/site.css?v="));
     const first_video = try site_builder.url(first, "/post/test/assets/clip.mp4");
@@ -363,11 +396,12 @@ test "cache busting versions URLs without retaining asset copies" {
             .modify_timestamp = .{ .new = font_stat.mtime },
         },
     );
-    try tmp.dir.writeFile(io, .{ .sub_path = "docs/theme.js", .data = "// theme two" });
+    try tmp.dir.writeFile(io, .{ .sub_path = "posts/0001-test/example.js", .data = "// script two" });
     try tmp.dir.writeFile(io, .{ .sub_path = "posts/0001-test/clip.mp4", .data = "video two" });
     try site_builder.build(tmp.dir, executable);
     const second = try site_builder.read(tmp.dir, "docs/post/test/index.html");
     defer gpa.free(second);
+    try expectInlineTheme(second);
     const second_css = try site_builder.url(second, ".css");
     const second_video = try site_builder.url(second, "/post/test/assets/clip.mp4");
     try testing.expect(!std.mem.eql(u8, first_css, second_css));
@@ -380,9 +414,14 @@ test "cache busting versions URLs without retaining asset copies" {
     const second_font = try site_builder.url(second_stylesheet, "fonts/test/font.woff2");
     try testing.expect(!std.mem.eql(u8, first_font, second_font));
     try testing.expectEqualStrings(second_css["/site.css?v=".len..], second_font["fonts/test/font.woff2?v=".len..]);
-    try site_builder.expectAsset(tmp.dir, try site_builder.url(second, "/theme.js"), "// theme two");
+    try site_builder.expectAsset(
+        tmp.dir,
+        try site_builder.url(second, "/post/test/assets/example.js"),
+        "// script two",
+    );
     const index = try site_builder.read(tmp.dir, "docs/index.html");
     defer gpa.free(index);
+    try expectInlineTheme(index);
     try testing.expectEqualStrings(second_css, try site_builder.url(index, ".css"));
     const feed = try site_builder.read(tmp.dir, "docs/feed.xml");
     defer gpa.free(feed);

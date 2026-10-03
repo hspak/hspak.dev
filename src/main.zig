@@ -155,7 +155,6 @@ fn buildIndex(gpa: Allocator, io: Io) !void {
     }
     for ([_][]const u8{
         "index.css",
-        "theme.js",
         "favicon.svg",
         "favicon.ico",
         "apple-touch-icon.png",
@@ -239,4 +238,5 @@ test {
     _ = partials;
     _ = @import("time.zig");
     _ = @import("site_test.zig");
+    _ = @import("serve_test.zig");
 }

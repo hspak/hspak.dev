@@ -3,7 +3,12 @@
     .version = "0.0.0",
     .fingerprint = 0x16c9a5f872995a59,
     .minimum_zig_version = "0.16.0",
-    .dependencies = .{},
+    .dependencies = .{
+        .zhtps = .{
+            .url = "git+https://github.com/hspak/zhtps#9277ffbecb9d8d755bee924ca7d070a86b8bdae4",
+            .hash = "zhtps-0.0.0-2nYYll9b7AJpNsEOq5_foxKEknj9u1z3fgHPDmbBOSSt",
+        },
+    },
     .paths = .{
         "build.zig",
         "build.zig.zon",

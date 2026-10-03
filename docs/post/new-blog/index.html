@@ -3,8 +3,41 @@
   <head>
     <title>New Blog</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-u7beveoHBy1OQkOE9HO9POYvblQwbjkaUgc9tQW/swk=';">
     <meta name="color-scheme" content="light dark">
+    <script>const storageKey = "theme-invert";
+
+function loadInvert() {
+    try {
+        return localStorage.getItem(storageKey) === "1";
+    } catch {
+        return false;
+    }
+}
+
+function saveInvert(on) {
+    try {
+        if (on) localStorage.setItem(storageKey, "1");
+        else localStorage.removeItem(storageKey);
+    } catch {}
+}
+
+function applyInvert(on) {
+    document.documentElement.classList.toggle("theme-invert", on);
+}
+
+applyInvert(loadInvert());
+
+document.addEventListener("DOMContentLoaded", () => {
+    const box = document.getElementById("theme");
+    if (!box) return;
+    box.checked = loadInvert();
+    box.addEventListener("change", () => {
+        saveInvert(box.checked);
+        applyInvert(box.checked);
+    });
+});
+</script>
     <meta name="referrer" content="strict-origin">
     <meta name="author" content="Hong Shick Pak">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,17 +50,16 @@
     <meta property="og:description" content="Blog of Hong Shick Pak">
     <meta property="twitter:creator" content="@hspasta">
     <link rel="canonical" href="https://hspak.dev/">
-    <link rel="icon" href="/favicon.svg?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" type="image/svg+xml">
-    <link rel="icon" href="/favicon.ico?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b" sizes="32x32">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b">
-    <link rel="preload" href="/fonts/et-book/et-book-roman.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"
+    <link rel="icon" href="/favicon.svg?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783" sizes="32x32">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783">
+    <link rel="preload" href="/fonts/et-book/et-book-roman.woff2?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"
           as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/et-book/et-book-italic.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"
+    <link rel="preload" href="/fonts/et-book/et-book-italic.woff2?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"
           as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"
+    <link rel="preload" href="/fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783"
           as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/site.css?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b">
-    <script src="/theme.js?v=b48740734450f98f5f59e16396def2396f49d7458c1b3d919e6b76d973c6153b"></script>
+    <link rel="stylesheet" href="/site.css?v=7bb2f18a738d5a5d134a9b30541a0f6f3342a9f7ee88cdf0d944c8cc47812783">
   </head>
   <body>
     <input type="checkbox" id="theme">
@@ -37,6 +69,7 @@
       <div class="block">
       <a href="/"><h1>Blog</h1></a>
       </div>
+      <main>
       <div class="block">
         <h2>New Blog</h2>
         <div class="date">Oct 31, 2021 (Updated at: Nov 6, 2021)</div>
@@ -50,7 +83,8 @@ somewhat tolerable for writing blog posts. Recently I found out there's already
 a <a href="https://github.com/kivikakk/koino">popular markdown parser for Zig</a>!</p>
 <p>Now that this is finally shipped, hopefully more posts will follow!</p>
         </div>
-      </div>      <div class="block">
+      </div>      </main>
+      <div class="block">
         <div class="footer">
           <a href="#top">To Top</a> · <a href="https://hspak.com">By Hong</a>
         </div>

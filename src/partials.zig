@@ -2,9 +2,16 @@
 
 const std = @import("std");
 const Writer = std.Io.Writer;
+const Sha256 = std.crypto.hash.sha2.Sha256;
 
-/// Write the document head and site header.
+const theme_script = @embedFile("theme.js");
+
+/// Write the document head and site header, then open the main content landmark.
 pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!void {
+    var digest: [Sha256.digest_length]u8 = undefined;
+    Sha256.hash(theme_script, &digest, .{});
+    var hash_buffer: [std.base64.standard.Encoder.calcSize(digest.len)]u8 = undefined;
+    const theme_hash = std.base64.standard.Encoder.encode(&hash_buffer, &digest);
     const header = if (is_index)
         \\<div class="indexHeader">
         \\        <div class="indexBlock"><h1>Blog</h1></div>
@@ -22,8 +29,9 @@ pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!v
         \\  <head>
         \\    <title>{s}</title>
         \\    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        \\    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
+        \\    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-{s}';">
         \\    <meta name="color-scheme" content="light dark">
+        \\    <script>{s}</script>
         \\    <meta name="referrer" content="strict-origin">
         \\    <meta name="author" content="Hong Shick Pak">
         \\    <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -46,7 +54,6 @@ pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!v
         \\    <link rel="preload" href="/fonts/ibm-plex-sans-condensed/IBMPlexSansCondensed-SemiBold.woff2"
         \\          as="font" type="font/woff2" crossorigin>
         \\    <link rel="stylesheet" href="/index.css">
-        \\    <script src="/theme.js"></script>
         \\  </head>
         \\  <body>
         \\    <input type="checkbox" id="theme">
@@ -56,11 +63,17 @@ pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!v
         \\      <div class="block">
         \\      {s}
         \\      </div>
+        \\      <main>
         \\
-    , .{ title, header });
+    , .{
+        title,
+        theme_hash,
+        theme_script,
+        header,
+    });
 }
 
-/// Write the footer and close the document.
+/// Close the main content landmark, then write the footer and close the document.
 pub fn writeFooter(w: *Writer, is_index: bool) Writer.Error!void {
     const author = if (is_index)
         \\
@@ -68,6 +81,7 @@ pub fn writeFooter(w: *Writer, is_index: bool) Writer.Error!void {
         \\ · <a href="https://hspak.com">By Hong</a>
     ;
     return w.print(
+        \\      </main>
         \\      <div class="block">
         \\        <div class="footer">
         \\          <a href="#top">To Top</a>{s}
