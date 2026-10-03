@@ -3,12 +3,38 @@
 const std = @import("std");
 const linux = std.os.linux;
 const zhtps = @import("zhtps");
+const security = @import("security.zig");
+
+const security_headers = [_]zhtps.http.Header{
+    .{ .name = "Strict-Transport-Security", .value = "max-age=31536000; includeSubDomains" },
+    .{ .name = "Content-Security-Policy", .value = security.content_security_policy },
+    .{ .name = "X-Frame-Options", .value = "SAMEORIGIN" },
+    .{ .name = "Referrer-Policy", .value = security.referrer_policy },
+    .{
+        .name = "Permissions-Policy",
+        .value = "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    },
+};
 
 const api = struct {
+    const files = zhtps.staticFiles(@This(), "/", .{ .root = "docs", .zstd = true });
+
     pub const lanes = .{ .files = .{ .timeout_ms = 30_000 } };
-    pub const routes = .{
-        zhtps.staticFiles(@This(), "/", .{ .root = "docs", .zstd = true }),
-    };
+    pub const routes = .{secured: {
+        var route = files;
+        route.handler = serve;
+        break :secured route;
+    }};
+
+    fn serve(call: *zhtps.Call(@This())) zhtps.EndpointError!zhtps.http.Response {
+        var response = try files.handler(call);
+        // The transport borrows headers until completion; keep them in request scratch.
+        response.headers = try std.mem.concat(call.scratch.allocator(), zhtps.http.Header, &.{
+            response.headers,
+            &security_headers,
+        });
+        return response;
+    }
 };
 
 var stopping: std.atomic.Value(bool) = .init(false);

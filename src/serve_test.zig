@@ -5,6 +5,7 @@ const builtin = @import("builtin");
 const Io = std.Io;
 const testing = std.testing;
 const test_options = @import("test_options");
+const partials = @import("partials.zig");
 
 fn waitForPort(dir: Io.Dir) !u16 {
     const deadline = Io.Clock.awake.now(testing.io).addDuration(.fromSeconds(15));
@@ -72,6 +73,51 @@ fn body(response: []const u8) ![]const u8 {
     return response[boundary + 4 ..];
 }
 
+fn expectSecurityHeaders(response: []const u8) !void {
+    const fields = .{
+        .{ "strict-transport-security", "max-age=31536000; includeSubDomains" },
+        .{ "x-frame-options", "SAMEORIGIN" },
+        .{ "referrer-policy", "strict-origin" },
+        .{ "permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+    };
+    inline for (fields) |field| {
+        const actual = header(response, field[0]) orelse return error.MissingSecurityHeader;
+        try testing.expectEqualStrings(field[1], actual);
+    }
+    const policy = header(response, "content-security-policy") orelse
+        return error.MissingContentSecurityPolicy;
+    for ([_][]const u8{
+        "default-src 'self';",
+        "object-src 'none';",
+        "base-uri 'none';",
+        "form-action 'none';",
+        "frame-ancestors 'self';",
+    }) |directive| try testing.expect(std.mem.indexOf(u8, policy, directive) != null);
+    try testing.expect(std.mem.indexOf(u8, policy, "'unsafe-inline'") == null);
+    try testing.expect(std.mem.indexOf(u8, policy, "'unsafe-eval'") == null);
+}
+
+fn expectThemeAllowed(response: []const u8) !void {
+    const html = try body(response);
+    const start = (std.mem.indexOf(u8, html, "<script>") orelse
+        return error.MissingThemeScript) + "<script>".len;
+    const end = std.mem.indexOfPos(u8, html, start, "</script>") orelse
+        return error.MissingScriptEnd;
+    var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(html[start..end], &digest, .{});
+    var hash_buffer: [std.base64.standard.Encoder.calcSize(digest.len)]u8 = undefined;
+    const encoded = std.base64.standard.Encoder.encode(&hash_buffer, &digest);
+    const expected = try std.fmt.allocPrint(
+        testing.allocator,
+        "script-src 'self' 'sha256-{s}';",
+        .{encoded},
+    );
+    defer testing.allocator.free(expected);
+    const policy = header(response, "content-security-policy") orelse
+        return error.MissingContentSecurityPolicy;
+    try testing.expect(std.mem.indexOf(u8, policy, expected) != null);
+}
+
 fn expectDecoded(compressed: []const u8, expected: []const u8) !void {
     var input: Io.Reader = .fixed(compressed);
     const zstd = std.compress.zstd;
@@ -89,8 +135,12 @@ test "production server negotiates zstd for generated pages and assets" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     try tmp.dir.createDirPath(io, "docs/post/example");
-    const html = "<!doctype html><html><body>" ++ "<p>A generated blog post.</p>\n" ** 256 ++
-        "</body></html>";
+    var document: Io.Writer.Allocating = .init(testing.allocator);
+    defer document.deinit();
+    try partials.writeHeader(&document.writer, false, "Security headers");
+    try document.writer.writeAll("<p>A generated blog post.</p>\n" ** 256);
+    try partials.writeFooter(&document.writer, false);
+    const html = document.written();
     const files = [_]struct { path: []const u8, mime: []const u8, content: []const u8 }{
         .{
             .path = "index.html",
@@ -152,6 +202,8 @@ test "production server negotiates zstd for generated pages and assets" {
         try testing.expect(std.mem.startsWith(u8, plain, "HTTP/1.1 200 "));
         try testing.expect(header(plain, "content-encoding") == null);
         try testing.expectEqualStrings(file.content, try body(plain));
+        try expectSecurityHeaders(plain);
+        if (std.mem.endsWith(u8, file.path, ".html")) try expectThemeAllowed(plain);
 
         const compressed = try request(port, "GET", path, "Accept-Encoding: zstd\r\n");
         defer testing.allocator.free(compressed);
@@ -160,6 +212,7 @@ test "production server negotiates zstd for generated pages and assets" {
         try testing.expectEqualStrings("Accept-Encoding", header(compressed, "vary").?);
         try testing.expectEqualStrings(file.mime, header(compressed, "content-type").?);
         try testing.expectEqualStrings("no-cache", header(compressed, "cache-control").?);
+        try expectSecurityHeaders(compressed);
         const encoded = try body(compressed);
         try testing.expect(encoded.len < file.content.len);
         const length = try std.fmt.parseInt(usize, header(compressed, "content-length").?, 10);
@@ -169,6 +222,7 @@ test "production server negotiates zstd for generated pages and assets" {
 
         const head = try request(port, "HEAD", path, "Accept-Encoding: zstd\r\n");
         defer testing.allocator.free(head);
+        try expectSecurityHeaders(head);
         try testing.expectEqualStrings("", try body(head));
         try testing.expectEqualStrings("zstd", header(head, "content-encoding").?);
         try testing.expectEqualStrings(
@@ -185,11 +239,13 @@ test "production server negotiates zstd for generated pages and assets" {
         const cached = try request(port, "GET", path, conditions);
         defer testing.allocator.free(cached);
         try testing.expect(std.mem.startsWith(u8, cached, "HTTP/1.1 304 "));
+        try expectSecurityHeaders(cached);
         try testing.expectEqualStrings("", try body(cached));
     }
     for ([_][]const u8{ "/", "/post/example/" }) |path| {
         const response = try request(port, "GET", path, "Accept-Encoding: zstd\r\n");
         defer testing.allocator.free(response);
+        try expectSecurityHeaders(response);
         try testing.expectEqualStrings("zstd", header(response, "content-encoding").?);
         try expectDecoded(try body(response), html);
     }
@@ -197,9 +253,22 @@ test "production server negotiates zstd for generated pages and assets" {
     defer testing.allocator.free(image);
     try testing.expect(header(image, "content-encoding") == null);
     try testing.expectEqualStrings(html, try body(image));
+    try expectSecurityHeaders(image);
     const outside = try request(port, "GET", "/secret.txt", "");
     defer testing.allocator.free(outside);
     try testing.expect(std.mem.startsWith(u8, outside, "HTTP/1.1 404 "));
+    try expectSecurityHeaders(outside);
+
+    const redirect = try request(port, "GET", "/post/example?version=1", "");
+    defer testing.allocator.free(redirect);
+    try testing.expect(std.mem.startsWith(u8, redirect, "HTTP/1.1 308 "));
+    try testing.expectEqualStrings("/post/example/?version=1", header(redirect, "location").?);
+    try expectSecurityHeaders(redirect);
+
+    const unacceptable = try request(port, "GET", "/", "Accept-Encoding: *;q=0\r\n");
+    defer testing.allocator.free(unacceptable);
+    try testing.expect(std.mem.startsWith(u8, unacceptable, "HTTP/1.1 406 "));
+    try expectSecurityHeaders(unacceptable);
 
     const updated = "<html><body>Updated deployment</body></html>";
     try docs.writeFile(io, .{ .sub_path = "index.html", .data = updated });
@@ -207,6 +276,7 @@ test "production server negotiates zstd for generated pages and assets" {
     defer testing.allocator.free(changed);
     try testing.expect(header(changed, "content-encoding") == null);
     try testing.expectEqualStrings(updated, try body(changed));
+    try expectSecurityHeaders(changed);
     // The server handles TERM so its private compression files can be removed.
     try testing.expectEqual(.SUCCESS, std.os.linux.errno(std.os.linux.kill(child.id.?, .TERM)));
     const Completion = union(enum) {

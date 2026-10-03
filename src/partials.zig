@@ -2,16 +2,10 @@
 
 const std = @import("std");
 const Writer = std.Io.Writer;
-const Sha256 = std.crypto.hash.sha2.Sha256;
-
-const theme_script = @embedFile("theme.js");
+const security = @import("security.zig");
 
 /// Write the document head and site header, then open the main content landmark.
 pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!void {
-    var digest: [Sha256.digest_length]u8 = undefined;
-    Sha256.hash(theme_script, &digest, .{});
-    var hash_buffer: [std.base64.standard.Encoder.calcSize(digest.len)]u8 = undefined;
-    const theme_hash = std.base64.standard.Encoder.encode(&hash_buffer, &digest);
     const header = if (is_index)
         \\<div class="indexHeader">
         \\        <div class="indexBlock"><h1>Blog</h1></div>
@@ -29,10 +23,10 @@ pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!v
         \\  <head>
         \\    <title>{s}</title>
         \\    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        \\    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-{s}';">
+        \\    <meta http-equiv="Content-Security-Policy" content="{s}">
         \\    <meta name="color-scheme" content="light dark">
         \\    <script>{s}</script>
-        \\    <meta name="referrer" content="strict-origin">
+        \\    <meta name="referrer" content="{s}">
         \\    <meta name="author" content="Hong Shick Pak">
         \\    <meta name="viewport" content="width=device-width, initial-scale=1">
         \\    <meta name="keywords" content="Michael Pak, Hong Shick Pak, Hong, Shick, Pak, Michael, Blog, hspak">
@@ -67,8 +61,9 @@ pub fn writeHeader(w: *Writer, is_index: bool, title: []const u8) Writer.Error!v
         \\
     , .{
         title,
-        theme_hash,
-        theme_script,
+        security.meta_content_security_policy,
+        security.theme_script,
+        security.referrer_policy,
         header,
     });
 }
