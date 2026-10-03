@@ -11,6 +11,20 @@ pub fn build(b: *std.Build) void {
         "Skip tests that do not match this filter",
     );
 
+    const server_options = b.addOptions();
+    const document_root = b.option([]const u8, "document-root", "Production document directory") orelse "docs";
+    const acme_root = b.option([]const u8, "acme-root", "Enable HTTP-01 serving from this directory");
+    const file_threads = b.option(usize, "file-threads", "File lane threads per transport worker") orelse 1;
+    const file_queue = b.option(usize, "file-queue", "File lane waiting slots per transport worker") orelse 64;
+    if (document_root.len == 0 or (acme_root != null and acme_root.?.len == 0))
+        std.debug.panic("document-root and acme-root must not be empty", .{});
+    if (file_threads == 0 or file_queue == 0)
+        std.debug.panic("file-threads and file-queue must be positive", .{});
+    server_options.addOption([]const u8, "document_root", document_root);
+    server_options.addOption(?[]const u8, "acme_root", acme_root);
+    server_options.addOption(usize, "file_threads", file_threads);
+    server_options.addOption(usize, "file_queue", file_queue);
+
     const magickwand = b.addTranslateC(.{
         .root_source_file = b.path("src/magickwand.h"),
         .target = target,
@@ -52,7 +66,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .imports = &.{.{ .name = "zhtps", .module = zhtps }},
     });
+    server_module.addOptions("server_options", server_options);
     const server = b.addExecutable(.{ .name = "zserve", .root_module = server_module });
+    server.pie = true;
     const install_server = b.addInstallArtifact(server, .{});
     b.step("install-server", "Install the zhtps production server").dependOn(&install_server.step);
     const serve_cmd = b.addRunArtifact(server);
@@ -69,6 +85,7 @@ pub fn build(b: *std.Build) void {
     });
     test_module.addImport("magickwand", magickwand_module);
     test_module.addOptions("test_options", test_options);
+    test_module.addOptions("server_options", server_options);
     const tests = b.addTest(.{
         .root_module = test_module,
         .filters = if (test_filter) |filter| &.{filter} else &.{},

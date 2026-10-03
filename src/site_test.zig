@@ -834,3 +834,51 @@ test "watch rebuilds the site and recovers from invalid posts" {
         },
     }
 }
+
+test "build-only generates content, exits without a listener, and reports invalid posts" {
+    if (comptime builtin.os.tag == .windows or !std.process.can_spawn) return error.SkipZigTest;
+    const io = testing.io;
+    const gpa = testing.allocator;
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(io, "posts");
+    try tmp.dir.createDirPath(io, "docs");
+    var site: Site = .{ .dir = tmp.dir };
+    try site.writePost("posts/0001-test.md", .{});
+    try site.write("docs/index.css", "body { color: red; }");
+    const executable = try Io.Dir.cwd().realPathFileAlloc(io, test_options.zmd_path, gpa);
+    defer gpa.free(executable);
+    // Holding the requested port proves build-only never tries to bind it.
+    var listener = try (try Io.net.IpAddress.parse("127.0.0.1", 0)).listen(io, .{});
+    defer listener.deinit(io);
+    const port = try std.fmt.allocPrint(gpa, "{d}", .{listener.socket.address.getPort()});
+    defer gpa.free(port);
+    const result = try std.process.run(gpa, io, .{
+        .argv = &.{ executable, "--build-only", "--port", port },
+        .cwd = .{ .dir = tmp.dir },
+        .timeout = .{ .duration = .{ .raw = .fromSeconds(10), .clock = .awake } },
+    });
+    defer gpa.free(result.stdout);
+    defer gpa.free(result.stderr);
+    try testing.expectEqual(std.process.Child.Term{ .exited = 0 }, result.term);
+    const html = try site.read("docs/post/test/index.html");
+    defer gpa.free(html);
+    try expectInlineTheme(html);
+    try testing.expect(std.mem.indexOf(u8, html, "Alpha") != null);
+    try testing.expect(std.mem.indexOf(u8, html, "/__zmd/") == null);
+    try site.expectText("docs/index.html", "Test post");
+    try site.expectText("docs/feed.xml", "Alpha");
+    try site.expectText("docs/site.css", "color: red");
+
+    // A duplicate output name is a build failure, not a successful partial site.
+    try site.writePost("posts/0002-duplicate.md", .{});
+    const failed = try std.process.run(gpa, io, .{
+        .argv = &.{ executable, "--build-only" },
+        .cwd = .{ .dir = tmp.dir },
+        .timeout = .{ .duration = .{ .raw = .fromSeconds(10), .clock = .awake } },
+    });
+    defer gpa.free(failed.stdout);
+    defer gpa.free(failed.stderr);
+    try testing.expectEqual(std.process.Child.Term{ .exited = 1 }, failed.term);
+    try testing.expect(std.mem.indexOf(u8, failed.stderr, "DuplicatePostPath") != null);
+}

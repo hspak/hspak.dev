@@ -4,6 +4,7 @@ const std = @import("std");
 const linux = std.os.linux;
 const zhtps = @import("zhtps");
 const security = @import("security.zig");
+const server_options = @import("server_options");
 
 const security_headers = [_]zhtps.http.Header{
     .{ .name = "Strict-Transport-Security", .value = "max-age=31536000; includeSubDomains" },
@@ -17,14 +18,26 @@ const security_headers = [_]zhtps.http.Header{
 };
 
 const api = struct {
-    const files = zhtps.staticFiles(@This(), "/", .{ .root = "docs", .zstd = true });
+    const files = zhtps.staticFiles(@This(), "/", .{ .root = server_options.document_root, .zstd = true });
 
-    pub const lanes = .{ .files = .{ .timeout_ms = 30_000 } };
-    pub const routes = .{secured: {
+    pub const lanes = .{ .files = .{
+        .threads = server_options.file_threads,
+        .queue = server_options.file_queue,
+        .timeout_ms = 30_000,
+    } };
+    const content_routes = .{secured: {
         var route = files;
         route.handler = serve;
         break :secured route;
     }};
+
+    // HTTP-01 validation can follow the HTTP redirect to this HTTPS route.
+    pub const routes = if (server_options.acme_root) |root| .{
+        zhtps.staticFiles(@This(), "/.well-known/acme-challenge", .{
+            .root = root,
+            .index_file = null,
+        }),
+    } ++ content_routes else content_routes;
 
     fn serve(call: *zhtps.Call(@This())) zhtps.EndpointError!zhtps.http.Response {
         var response = try files.handler(call);
@@ -50,7 +63,7 @@ pub fn main(init: std.process.Init) !void {
         if (!std.mem.eql(u8, arg, "--help")) continue;
         try std.Io.File.stdout().writeStreamingAll(init.io,
             \\Usage: zserve [zhtps options]
-            \\Serve existing docs/ with startup-prepared zstd compression.
+            \\Serve the configured document directory with startup-prepared zstd compression.
             \\Defaults: http://127.0.0.1:8080, admin listener disabled.
             \\  --address IP             Bind address
             \\  --port PORT              Port; 0 selects a free port

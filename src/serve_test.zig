@@ -5,6 +5,7 @@ const builtin = @import("builtin");
 const Io = std.Io;
 const testing = std.testing;
 const test_options = @import("test_options");
+const server_options = @import("server_options");
 const partials = @import("partials.zig");
 
 fn waitForPort(dir: Io.Dir) !u16 {
@@ -18,6 +19,14 @@ fn waitForPort(dir: Io.Dir) !u16 {
         );
         defer testing.allocator.free(bytes);
         if (std.mem.startsWith(u8, bytes, "error: IoUringUnavailable\n")) return error.SkipZigTest;
+        if (std.mem.startsWith(u8, bytes, "error: ResourceDetectionUnavailable\n")) {
+            // Nix build sandboxes omit cgroup mounts. The same suite runs fully
+            // in nix develop; visible cgroups with failed detection remain errors.
+            Io.Dir.cwd().access(testing.io, "/sys/fs/cgroup", .{}) catch |err| switch (err) {
+                error.FileNotFound => return error.SkipZigTest,
+                else => return err,
+            };
+        }
         var lines = std.mem.splitScalar(u8, bytes, '\n');
         while (lines.next()) |line| {
             const parsed = std.json.parseFromSlice(struct {
@@ -134,7 +143,21 @@ test "production server negotiates zstd for generated pages and assets" {
     const io = testing.io;
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.createDirPath(io, "docs/post/example");
+    const document_root = server_options.document_root;
+    const post_directory = try Io.Dir.path.join(testing.allocator, &.{ document_root, "post/example" });
+    defer testing.allocator.free(post_directory);
+    try tmp.dir.createDirPath(io, post_directory);
+    if (!std.mem.eql(u8, document_root, "docs")) {
+        try tmp.dir.createDirPath(io, "docs");
+        try tmp.dir.writeFile(io, .{ .sub_path = "docs/index.html", .data = "wrong document root" });
+    }
+    if (server_options.acme_root) |root| {
+        try tmp.dir.createDirPath(io, root);
+        const challenge = try tmp.dir.openDir(io, root, .{});
+        defer challenge.close(io);
+        try challenge.writeFile(io, .{ .sub_path = "test-token", .data = "challenge-token" });
+        try challenge.writeFile(io, .{ .sub_path = "index.html", .data = "must not serve directory index" });
+    }
     var document: Io.Writer.Allocating = .init(testing.allocator);
     defer document.deinit();
     try partials.writeHeader(&document.writer, false, "Security headers");
@@ -168,7 +191,7 @@ test "production server negotiates zstd for generated pages and assets" {
             .content = "<feed>" ++ "<entry/>" ** 256 ++ "</feed>",
         },
     };
-    const docs = try tmp.dir.openDir(io, "docs", .{});
+    const docs = try tmp.dir.openDir(io, document_root, .{});
     defer docs.close(io);
     for (files) |file| try docs.writeFile(io, .{ .sub_path = file.path, .data = file.content });
     try docs.writeFile(io, .{ .sub_path = "image.png", .data = html });
@@ -176,9 +199,11 @@ test "production server negotiates zstd for generated pages and assets" {
 
     const log = try tmp.dir.createFile(io, "serve.log", .{});
     defer log.close(io);
+    const executable = try Io.Dir.cwd().realPathFileAlloc(io, test_options.zserve_path, testing.allocator);
+    defer testing.allocator.free(executable);
     var child = try std.process.spawn(io, .{
         .argv = &.{
-            test_options.zserve_path,
+            executable,
             "--port",
             "0",
             "--workers",
@@ -193,6 +218,19 @@ test "production server negotiates zstd for generated pages and assets" {
     });
     defer child.kill(io);
     const port = try waitForPort(tmp.dir);
+    const challenge = try request(port, "GET", "/.well-known/acme-challenge/test-token", "");
+    defer testing.allocator.free(challenge);
+    if (server_options.acme_root != null) {
+        try testing.expect(std.mem.startsWith(u8, challenge, "HTTP/1.1 200 "));
+        try testing.expectEqualStrings("challenge-token", try body(challenge));
+    } else {
+        try testing.expect(std.mem.startsWith(u8, challenge, "HTTP/1.1 404 "));
+    }
+    for ([_][]const u8{ "/.well-known/acme-challenge/", "/.well-known/acme-challenge/missing" }) |path| {
+        const response = try request(port, "GET", path, "");
+        defer testing.allocator.free(response);
+        try testing.expect(std.mem.startsWith(u8, response, "HTTP/1.1 404 "));
+    }
 
     for (files) |file| {
         const path = try std.fmt.allocPrint(testing.allocator, "/{s}?v=version", .{file.path});

@@ -19,6 +19,7 @@ const MainError = LoopError || Watch.Error || Server.InitError || Server.RunErro
     MissingPort,
     InvalidPort,
     InvalidArgument,
+    BuildFailed,
 };
 
 pub fn main(init: std.process.Init) MainError!void {
@@ -26,24 +27,39 @@ pub fn main(init: std.process.Init) MainError!void {
     defer args.deinit();
     _ = args.skip();
     var port: u16 = 8000;
+    var build_only = false;
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "--port")) {
             const value = args.next() orelse return error.MissingPort;
             port = std.fmt.parseInt(u16, value, 10) catch return error.InvalidPort;
+        } else if (std.mem.eql(u8, arg, "--build-only")) {
+            build_only = true;
         } else if (std.mem.eql(u8, arg, "--help")) {
             try Io.File.stdout().writeStreamingAll(
                 init.io,
-                "Usage: zmd [--port PORT]\n" ++
-                    "Build posts/, serve docs/ on 127.0.0.1:8000, and watch for changes.\n",
+                "Usage: zmd [--build-only] [--port PORT]\n" ++
+                    "Build posts/, serve docs/ on 127.0.0.1:8000, and watch for changes.\n" ++
+                    "--build-only generates docs/ and exits; failures return a nonzero status.\n",
             );
             return;
         } else {
-            log.err("unknown argument: {s}; usage: zmd [--port PORT]", .{arg});
+            log.err("unknown argument: {s}; usage: zmd [--build-only] [--port PORT]", .{arg});
             return error.InvalidArgument;
         }
     }
     image.init();
     defer image.deinit();
+    if (build_only) {
+        buildIndex(init.gpa, init.io) catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.Canceled => return error.Canceled,
+            else => {
+                log.err("build failed: {t}", .{err});
+                return error.BuildFailed;
+            },
+        };
+        return;
+    }
 
     // Snapshot before rendering so edits made during a build are picked up too.
     var watch: Watch = .{
